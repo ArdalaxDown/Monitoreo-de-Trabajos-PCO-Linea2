@@ -1,0 +1,13 @@
+Documentos del ATS/
+Planos del ATS/
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
+.DS_Store
+.agents/
+.claude/
+skills-lock.json
+*.bak
+*.bak-*
