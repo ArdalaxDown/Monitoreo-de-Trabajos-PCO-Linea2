@@ -29,7 +29,7 @@ const PTSA_TRACK_ZONES = [
   { id: "TK-19", name: "Vía TK-19 (Nave de Talleres)", type: "nave", xStart: 1850, xEnd: 2640, y: 720, catenaryZone: "Z-104" },
   { id: "TK-18", name: "Vía TK-18 (Nave de Talleres)", type: "nave", xStart: 1850, xEnd: 2640, y: 750, catenaryZone: "Z-104" },
 
-  # Haz Diagonal Exterior (Estacionamiento TK-26 a TK-36)
+  // Haz Diagonal Exterior (Estacionamiento TK-26 a TK-36)
   { id: "TK-35-36", name: "Vías TK-35 / TK-36 (Cochera Exterior)", type: "ladder", xStart: 1350, xEnd: 1510, y: 240, catenaryZone: "Z-101" },
   { id: "TK-33-34", name: "Vías TK-33 / TK-34 (Cochera Exterior)", type: "ladder", xStart: 1370, xEnd: 1530, y: 280, catenaryZone: "Z-101" },
   { id: "TK-31-32", name: "Vías TK-31 / TK-32 (Cochera Exterior)", type: "ladder", xStart: 1390, xEnd: 1550, y: 320, catenaryZone: "Z-101" },
@@ -37,7 +37,7 @@ const PTSA_TRACK_ZONES = [
   { id: "TK-27-28", name: "Vías TK-27 / TK-28 (Cochera Exterior)", type: "ladder", xStart: 1430, xEnd: 1590, y: 400, catenaryZone: "Z-101" },
   { id: "TK-26", name: "Vía TK-26 (Cochera Exterior)", type: "ladder", xStart: 1450, xEnd: 1610, y: 440, catenaryZone: "Z-101" },
 
-  # Vías Perimetrales y de Prueba
+  // Vías Perimetrales y de Prueba
   { id: "TK-TEST", name: "Vía de Prueba (TK-TEST / W TEST)", type: "ring", xStart: 1550, xEnd: 2450, y: 945, catenaryZone: "Z-105" },
   { id: "TK-LAVADO", name: "Planta de Lavado y Foso (W 04 / W 05)", type: "ring", xStart: 1200, xEnd: 1440, y: 880, catenaryZone: "Z-105" },
   { id: "T-04", name: "Lazo Curva Oeste T-04", type: "curve", xStart: 100, xEnd: 400, y: 500, catenaryZone: "Z-102" },

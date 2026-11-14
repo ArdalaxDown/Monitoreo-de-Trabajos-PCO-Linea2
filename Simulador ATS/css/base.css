@@ -1,0 +1,487 @@
+/* ==========================================================================
+   SIMULADOR ATS - MONITOREO DE TRABAJOS EN VÍA PRINCIPAL (OCIR LÍNEA 2)
+   Estilo HMI Hitachi Rail STS - Paleta Amigable, Alta Legibilidad & Cero Flickering
+   ========================================================================== */
+
+:root {
+  /* Superficies HMI (Pizarra Profundo Mate — Sin Blur Pesado) */
+  --bg-app: #070b12;
+  --bg-panel: #0c1320;
+  --bg-card: #121c2e;
+  --bg-elevated: #18263e;
+  --border-subtle: #1e2f4a;
+  --border-focus: #38bdf8;
+
+  /* Marca Oficial Línea 2 y Acentos Operativos */
+  --brand-l2-bg: #facc15;
+  --brand-l2-text: #dc2626;
+  --accent-cyan: #38bdf8;
+  --accent-amber: #f59e0b;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+
+  /* Tipografía y Jerarquía (Contraste WCAG AA >= 4.5:1) */
+  --text-main: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-bright: #ffffff;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Estados de Vía */
+  --via-nominal: #64748b;
+  --via-ocupada: #0284c7;
+  --via-mantenimiento: #f59e0b;
+  --via-exclusion: #a855f7;
+  --via-prohibido: #ef4444;
+
+  /* Estaciones y Señales */
+  --station-badge-bg: #0284c7;
+  --station-box-bg: #142238;
+  --station-box-border: #38bdf8;
+
+  /* Escala de Espaciado, Radios y Sombras Ligeras */
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px;  --space-4: 16px;  --space-5: 24px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.65);
+
+  /* Curvas Calibradas de Animación */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-elastic: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --shadow-panel: 0 8px 30px rgba(0, 0, 0, 0.5);
+  --shadow-glow-cyan: 0 0 18px rgba(56, 189, 248, 0.45);
+  --shadow-glow-amber: 0 0 18px rgba(245, 158, 11, 0.45);
+  --shadow-glow-danger: 0 0 25px rgba(239, 68, 68, 0.85);
+
+  /* Tokens propuesta de diseño de personajes y dresinas */
+  --token-bg-plate: #070d17;
+  --token-plate-border-work: #f59e0b;
+  --token-plate-border-safe: #10b981;
+  --token-plate-border-veh: #38bdf8;
+  --token-shadow-contact: rgba(2, 6, 23, 0.78);
+
+  --crew-vest-hi-vis: #ff6b1a;
+  --crew-vest-stroke: #9a3412;
+  --crew-reflective-band: #f8fafc;
+  --crew-pants-dark: #1e293b;
+  --crew-boots-steel: #451a03;
+
+  --helmet-track-yellow: #facc15;
+  --helmet-super-white: #f8fafc;
+  --helmet-elec-cyan: #38bdf8;
+  --helmet-safety-red: #ef4444;
+
+  --veh-chassis-dark: #0f172a;
+  --veh-body-primary: #0284c7;
+  --veh-body-secondary: #1e293b;
+  --veh-accent-cyan: #38bdf8;
+  --veh-hazard-amber: #f59e0b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+}
+
+/* Foco visible accesible para todos los controles interactivos */
+button, a, input, select, textarea, [tabindex]:not([tabindex="-1"]) {
+  outline: none;
+}
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:not([tabindex="-1"]):focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   1. CABECERA PRINCIPAL (HEADER HMI SOBRIO Y COMPACTO)
+   ========================================================================== */
+#sys-header {
+  height: 48px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-badge {
+  background-color: var(--brand-l2-bg);
+  color: var(--brand-l2-text);
+  font-weight: 900;
+  font-size: 14px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 1px;
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  box-shadow: var(--shadow-sm);
+}
+
+.brand-title {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-title h1 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--text-main);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-title span {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.6px;
+}
+
+.header-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.telemetry-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  background: var(--bg-card);
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  transition: border-color 0.2s var(--ease-out);
+}
+
+.telemetry-card:hover {
+  border-color: var(--accent-cyan);
+}
+
+.telemetry-card .card-icon {
+  font-size: 15px;
+}
+
+.telemetry-card .card-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.telemetry-card .card-info label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.telemetry-card .card-info strong {
+  font-size: 13px;
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  font-variant-numeric: tabular-nums;
+}
+
+.sound-toggle-btn {
+  min-height: 36px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+}
+
+.sound-toggle-btn.sound-on {
+  color: var(--accent-cyan);
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+#clock-display {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  background: var(--bg-app);
+  padding: 5px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  letter-spacing: 1.2px;
+}
+
+/* ==========================================================================
+   3. BANDEJA DE FICHAS TIPO GOOGLE MAPS / PEGMAN
+   ========================================================================== */
+#monopoly-toolbar {
+  height: 56px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 90;
+  box-shadow: var(--shadow-sm);
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.toolbar-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 1.2px;
+}
+
+/* Fichas Estilo Pegman */
+.pegman-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  cursor: grab;
+  position: relative;
+  transition: transform 0.18s var(--ease-elastic), border-color 0.18s, box-shadow 0.18s;
+}
+
+.pegman-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-cyan);
+  box-shadow: var(--shadow-sm);
+}
+
+.pegman-chip:active {
+  cursor: grabbing;
+  transform: scale(0.98);
+}
+
+.pegman-chip.chip-crew {
+  border-left: 4px solid var(--accent-amber);
+}
+
+.pegman-chip.chip-crew:hover {
+  border-color: var(--accent-amber);
+}
+
+.pegman-chip.chip-vehicle {
+  border-left: 4px solid var(--accent-cyan);
+}
+
+.pegman-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.pegman-chip.chip-crew .pegman-icon-box {
+  background: rgba(245, 158, 11, 0.18);
+  color: var(--accent-amber);
+}
+
+.pegman-chip.chip-vehicle .pegman-icon-box {
+  background: rgba(56, 189, 248, 0.18);
+  color: var(--accent-cyan);
+}
+
+.pegman-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.pegman-text strong {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-bright);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pegman-text span {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.drag-hint-badge {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--accent-cyan);
+  font-size: 8.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+/* Botones Auxiliares */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s var(--ease-out), border-color 0.15s, color 0.15s, transform 0.15s;
+}
+
+.action-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-focus);
+  color: var(--text-bright);
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: scale(0.98);
+}
+
+.action-btn.btn-sheet,
+.action-btn.btn-import-spco {
+  border-left: 3px solid var(--accent-amber);
+}
+
+#btn-open-ptsa-tab {
+  border-left: 3px solid var(--accent-green);
+}
+
+#btn-clear-all:hover {
+  border-color: var(--accent-red);
+  color: #fecaca;
+}
+
+/* Toast Notifications */
+#toast-container {
+  position: fixed;
+  bottom: 240px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 7000;
+  pointer-events: none;
+}
+
+.toast {
+  background: #111d2e;
+  border: 1px solid var(--accent-cyan);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  transform: translateY(10px);
+  animation: toastIn 0.25s var(--ease-out) forwards;
+}
+
+@keyframes toastIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toastOut {
+  to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Botón Reporte SPCO */
+.action-btn.btn-sheet {
+  border-left: 3px solid var(--accent-amber);
+}
+
+/* Botón de Secretos: oculto hasta introducir el código GAMER */
+#btn-open-easter-eggs {
+  min-height: 36px;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 0 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--accent-amber);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+}
+
+#btn-open-easter-eggs.revealed {
+  display: inline-flex;
+}
+
+#btn-open-easter-eggs:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-amber);
+  color: var(--text-bright);
+}
+
+#btn-open-easter-eggs.discovered-flash {
+  animation: secretFlash 0.6s ease-in-out 2;
+}
+
+/* ==============================================================================
+   IMPORTADOR SPCO (modal de copia desde Excel, verificación e importación)
+   ============================================================================== */
+.action-btn.btn-import-spco {
+  border-left: 3px solid var(--accent-amber);
+}

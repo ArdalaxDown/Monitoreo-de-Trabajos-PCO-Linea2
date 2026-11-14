@@ -4,356 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Simulador ATS — Monitoreo de Trabajos en Vía Principal | OCIR Línea 2</title>
-  <link rel="stylesheet" href="styles.css?v=20261111_05">
-
-  <!-- ==========================================================================
-       AWESOME DESIGN SYSTEM & SHORTS ANIMADOS CLAUDE (REDISEÑO TOTAL DE ALTO IMPACTO)
-       ========================================================================== -->
-  <style id="awesome-design-system-theme">
-    /* 1. PALETA DE ALTO CONTRASTE Y CRISTALERÍA HUD */
-    :root {
-      --bg-app: #060a12;
-      --bg-panel: #0b1220;
-      --bg-card: #101a2e;
-      --bg-elevated: #16243d;
-      --border-subtle: rgba(56, 189, 248, 0.18);
-      --border-accent: #0284c7;
-      --accent-cyan: #38bdf8;
-      --accent-amber: #f59e0b;
-      --accent-green: #10b981;
-      --accent-red: #ef4444;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-    }
-
-    body {
-      background: radial-gradient(circle at 50% 20%, #0e172a 0%, #050811 80%) !important;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", sans-serif !important;
-      color: var(--text-main) !important;
-    }
-
-    /* 2. CABECERA PRINCIPAL GLASSMORPHISM */
-    #sys-header {
-      height: 56px !important;
-      background: rgba(10, 16, 28, 0.94) !important;
-      backdrop-filter: blur(18px) !important;
-      -webkit-backdrop-filter: blur(18px) !important;
-      border-bottom: 1.5px solid rgba(56, 189, 248, 0.35) !important;
-      box-shadow: 0 6px 28px rgba(0, 0, 0, 0.65), 0 0 18px rgba(2, 132, 199, 0.25) !important;
-      padding: 0 20px !important;
-    }
-
-    .brand-badge {
-      background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-      color: #ffffff !important;
-      font-size: 13px !important;
-      font-weight: 900 !important;
-      letter-spacing: 1.5px !important;
-      padding: 5px 12px !important;
-      border-radius: 6px !important;
-      border: 1px solid rgba(56, 189, 248, 0.5) !important;
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.4) !important;
-    }
-
-    .brand-title h1 {
-      font-size: 14px !important;
-      font-weight: 900 !important;
-      letter-spacing: 1.4px !important;
-      background: linear-gradient(90deg, #ffffff 0%, #bae6fd 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 18px rgba(56, 189, 248, 0.35);
-    }
-
-    .brand-title span {
-      font-size: 10px !important;
-      color: #7dd3fc !important;
-      letter-spacing: 0.9px !important;
-      font-weight: 700 !important;
-    }
-
-    .telemetry-card {
-      background: rgba(16, 25, 44, 0.85) !important;
-      border: 1px solid rgba(56, 189, 248, 0.28) !important;
-      border-radius: 8px !important;
-      padding: 6px 14px !important;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
-      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-    }
-
-    .telemetry-card:hover {
-      background: rgba(22, 36, 62, 0.95) !important;
-      border-color: #38bdf8 !important;
-      transform: translateY(-1.5px);
-      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.35) !important;
-    }
-
-    .telemetry-card .card-info strong {
-      font-size: 15px !important;
-      letter-spacing: 0.5px;
-    }
-
-    #clock-display {
-      font-size: 16px !important;
-      color: #38bdf8 !important;
-      background: rgba(6, 11, 20, 0.95) !important;
-      border: 1.5px solid rgba(56, 189, 248, 0.4) !important;
-      border-radius: 8px !important;
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.35) !important;
-      padding: 6px 14px !important;
-      letter-spacing: 1.5px !important;
-    }
-
-    /* 3. BARRA DE NAVEGACIÓN RÁPIDA DE ESTACIONES */
-    #station-quicknav {
-      height: 40px !important;
-      background: rgba(8, 13, 24, 0.96) !important;
-      border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
-      padding: 0 16px !important;
-      gap: 8px !important;
-    }
-
-    .quicknav-title {
-      color: #94a3b8 !important;
-      font-size: 11px !important;
-      font-weight: 800 !important;
-      letter-spacing: 1px !important;
-    }
-
-    .nav-pill {
-      font-size: 11.5px !important;
-      font-weight: 800 !important;
-      border-radius: 6px !important;
-      padding: 4px 10px !important;
-      transition: all 0.18s ease-out !important;
-      cursor: pointer !important;
-    }
-
-    .nav-pill.pozo {
-      background: rgba(245, 158, 11, 0.12) !important;
-      border: 1px solid rgba(245, 158, 11, 0.45) !important;
-      color: #fbbf24 !important;
-    }
-
-    .nav-pill.pozo:hover {
-      background: #f59e0b !important;
-      color: #000000 !important;
-      box-shadow: 0 0 12px rgba(245, 158, 11, 0.6) !important;
-      transform: translateY(-1.5px);
-    }
-
-    .nav-pill.station {
-      background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(3, 105, 161, 0.18) 100%) !important;
-      border: 1px solid #38bdf8 !important;
-      color: #ffffff !important;
-    }
-
-    .nav-pill.station:hover {
-      background: #0284c7 !important;
-      color: #ffffff !important;
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.7) !important;
-      transform: translateY(-1.5px);
-    }
-
-    .nav-pill.ptsa {
-      background: rgba(16, 185, 129, 0.18) !important;
-      border: 1px solid #10b981 !important;
-      color: #a7f3d0 !important;
-    }
-
-    .nav-pill.ptsa:hover {
-      background: #10b981 !important;
-      color: #ffffff !important;
-      box-shadow: 0 0 14px rgba(16, 185, 129, 0.6) !important;
-      transform: translateY(-1.5px);
-    }
-
-    /* 4. BANDEJA DE FICHAS PEGMAN (HUD DISPATCH) */
-    #monopoly-toolbar {
-      height: 72px !important;
-      background: rgba(10, 17, 30, 0.96) !important;
-      backdrop-filter: blur(18px) !important;
-      -webkit-backdrop-filter: blur(18px) !important;
-      border-bottom: 1.5px solid rgba(56, 189, 248, 0.28) !important;
-      box-shadow: 0 6px 26px rgba(0, 0, 0, 0.6) !important;
-      padding: 0 20px !important;
-    }
-
-    .toolbar-label {
-      color: #7dd3fc !important;
-      font-size: 11px !important;
-      font-weight: 900 !important;
-      letter-spacing: 1.2px !important;
-    }
-
-    .pegman-chip {
-      padding: 8px 18px !important;
-      border-radius: 10px !important;
-      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
-      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
-    }
-
-    .pegman-chip.chip-crew {
-      background: linear-gradient(135deg, rgba(32, 44, 70, 0.95) 0%, rgba(18, 26, 44, 0.98) 100%) !important;
-      border: 1.5px solid #f59e0b !important;
-      border-left: 5px solid #f59e0b !important;
-    }
-
-    .pegman-chip.chip-crew:hover {
-      box-shadow: 0 8px 26px rgba(245, 158, 11, 0.45) !important;
-      transform: translateY(-2px) scale(1.02) !important;
-    }
-
-    .pegman-chip.chip-vehicle {
-      background: linear-gradient(135deg, rgba(20, 36, 62, 0.95) 0%, rgba(13, 23, 42, 0.98) 100%) !important;
-      border: 1.5px solid #38bdf8 !important;
-      border-left: 5px solid #38bdf8 !important;
-    }
-
-    .pegman-chip.chip-vehicle:hover {
-      box-shadow: 0 8px 26px rgba(56, 189, 248, 0.45) !important;
-      transform: translateY(-2px) scale(1.02) !important;
-    }
-
-    .pegman-icon-box {
-      width: 40px !important;
-      height: 40px !important;
-      font-size: 24px !important;
-      border-radius: 8px !important;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
-    }
-
-    .pegman-text strong {
-      font-size: 13px !important;
-      color: #ffffff !important;
-    }
-
-    .drag-hint-badge {
-      background: rgba(255, 255, 255, 0.15) !important;
-      font-size: 9.5px !important;
-      font-weight: 900 !important;
-      border-radius: 4px !important;
-      padding: 2px 7px !important;
-    }
-
-    .action-btn {
-      font-size: 12px !important;
-      font-weight: 800 !important;
-      letter-spacing: 0.8px !important;
-      border-radius: 8px !important;
-      padding: 9px 18px !important;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-      transition: all 0.18s ease-out !important;
-    }
-
-    .action-btn.btn-catenary {
-      background: linear-gradient(135deg, #0e2b4f 0%, #07172b 100%) !important;
-      border: 1.5px solid #38bdf8 !important;
-      color: #38bdf8 !important;
-      box-shadow: 0 0 16px rgba(56, 189, 248, 0.35) !important;
-    }
-
-    .action-btn.btn-catenary:hover {
-      background: #0284c7 !important;
-      color: #ffffff !important;
-      box-shadow: 0 0 22px rgba(56, 189, 248, 0.7) !important;
-      transform: translateY(-1.5px);
-    }
-
-    .action-btn.btn-sheet {
-      background: linear-gradient(135deg, #38240a 0%, #1c1204 100%) !important;
-      border: 1.5px solid #f59e0b !important;
-      color: #fbbf24 !important;
-      box-shadow: 0 0 16px rgba(245, 158, 11, 0.35) !important;
-    }
-
-    .action-btn.btn-sheet:hover {
-      background: #d97706 !important;
-      color: #ffffff !important;
-      box-shadow: 0 0 22px rgba(245, 158, 11, 0.7) !important;
-      transform: translateY(-1.5px);
-    }
-
-    #btn-clear-all {
-      background: linear-gradient(135deg, #3d1419 0%, #1e090b 100%) !important;
-      border: 1.5px solid #ef4444 !important;
-      color: #fca5a5 !important;
-      box-shadow: 0 0 16px rgba(239, 68, 68, 0.35) !important;
-    }
-
-    #btn-clear-all:hover {
-      background: #dc2626 !important;
-      color: #ffffff !important;
-      box-shadow: 0 0 22px rgba(239, 68, 68, 0.7) !important;
-      transform: translateY(-1.5px);
-    }
-
-    /* 5. PANEL INFERIOR Y TABLA DE TRABAJOS */
-    #bottom-dock {
-      background: rgba(10, 16, 28, 0.96) !important;
-      backdrop-filter: blur(20px) !important;
-      -webkit-backdrop-filter: blur(20px) !important;
-      border-top: 1.5px solid rgba(56, 189, 248, 0.28) !important;
-      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.7) !important;
-    }
-
-    .dock-header {
-      background: #080d17 !important;
-      border-bottom: 1px solid rgba(56, 189, 248, 0.18) !important;
-      height: 42px !important;
-    }
-
-    .dock-tab {
-      font-size: 11.5px !important;
-      font-weight: 800 !important;
-      letter-spacing: 0.8px !important;
-    }
-
-    .dock-tab.active {
-      color: #38bdf8 !important;
-      border-bottom: 2.5px solid #38bdf8 !important;
-      text-shadow: 0 0 10px rgba(56, 189, 248, 0.5) !important;
-    }
-
-    .work-table-container th {
-      background: #0d1524 !important;
-      color: #94a3b8 !important;
-      font-size: 10.5px !important;
-      font-weight: 900 !important;
-      letter-spacing: 1px !important;
-      padding: 10px 14px !important;
-      border-bottom: 1px solid rgba(56, 189, 248, 0.2) !important;
-    }
-
-    .work-table-container td {
-      padding: 10px 14px !important;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-      font-size: 12px !important;
-    }
-
-    .work-table-container tr:hover td {
-      background: rgba(56, 189, 248, 0.08) !important;
-    }
-
-    .btn-table-action {
-      border-radius: 6px !important;
-      font-size: 11px !important;
-      font-weight: 800 !important;
-      padding: 4px 10px !important;
-      transition: all 0.15s ease-out !important;
-    }
-
-    .btn-table-action.btn-move-action {
-      background: #0284c7 !important;
-      color: #ffffff !important;
-      box-shadow: 0 0 10px rgba(56, 189, 248, 0.5) !important;
-    }
-
-    .btn-table-action.btn-move-action:hover {
-      background: #0369a1 !important;
-      transform: scale(1.05) !important;
-    }
-  </style>
+  <link rel="stylesheet" href="css/base.css?v=20261114_01">
+  <link rel="stylesheet" href="css/track-svg.css?v=20261114_01">
+  <link rel="stylesheet" href="css/sprites-animations.css?v=20261114_01">
+  <link rel="stylesheet" href="css/modals-dock.css?v=20261114_01">
 
 </head>
 <body>
@@ -395,6 +49,8 @@
         </div>
       </div>
 
+<button class="nav-pill" id="btn-open-easter-eggs" title="Sala Arcade: 8 secretos por descubrir en el plano">🕵️ Secretos: <span id="easter-counter">0/8</span></button>
+
       <button class="sound-toggle-btn sound-on" id="btn-sound-toggle" title="Activar/Silenciar efectos sonoros y tonos TETRA ATS">
         <span id="sound-icon">🔊</span> <span id="sound-text">Audio ATS</span>
       </button>
@@ -408,26 +64,6 @@
       <div id="clock-display">00:00:00</div>
     </div>
   </header>
-
-  <!-- ==========================================================================
-       2. BARRA DE NAVEGACIÓN RÁPIDA (STATION QUICK-JUMP MINIMAP)
-       ========================================================================== -->
-  <nav id="station-quicknav">
-    <span class="quicknav-title">Navegación:</span>
-    <button class="nav-pill pozo" data-x="160" title="Saltar a Pozo de Ventilación 19">PV19</button>
-    <button class="nav-pill station" data-x="480" title="Saltar a Estación 20 Evitamiento">E20 Evitamiento</button>
-    <button class="nav-pill pozo" data-x="860" title="Saltar a Pozo de Ventilación 20">PV20</button>
-    <button class="nav-pill station" data-x="1260" title="Saltar a Estación 21 Óvalo Santa Anita">E21 Óvalo Sta. Anita</button>
-    <button class="nav-pill pozo" data-x="1640" title="Saltar a Pozo de Ventilación 21">PV21</button>
-    <button class="nav-pill station" data-x="1900" title="Saltar a Estación 22 Colectora Industrial">E22 Colectora Ind.</button>
-    <button class="nav-pill pozo" data-x="2260" title="Saltar a Pozo de Ventilación 22">PV22</button>
-    <button class="nav-pill station" data-x="2520" title="Saltar a Estación 23 Hermilio Valdizán">E23 Hermilio Valdizán</button>
-    <button class="nav-pill pozo" data-x="2720" title="Saltar a Pozo de Ventilación 23">PV23</button>
-    <button class="nav-pill ptsa" data-x="3180" title="Saltar a Patio Taller Santa Anita (PTSA)">PTSA</button>
-    <button class="nav-pill station" data-x="3180" title="Saltar a Estación 24 Mercado Santa Anita">E24 Mercado Sta. Anita</button>
-    <button class="nav-pill pozo" data-x="3450" title="Saltar a Pozo de Ventilación 24">PV24</button>
-    <button class="nav-pill" id="btn-open-easter-eggs" title="Secretos, Códigos y Modo Anime/Arcade">👾 Secretos & Anime</button>
-  </nav>
 
   <!-- ==========================================================================
        3. BANDEJA DE FICHAS TIPO GOOGLE MAPS / PEGMAN (DRAG & DROP DIRECTO)
@@ -461,12 +97,16 @@
         <span id="catenary-icon">⚡</span> <span id="catenary-status-text">1500V: Conforme</span>
       </button>
 
-      <button class="action-btn btn-sheet" id="btn-open-daily-sheet" title="Generar Parte Diario oficial para firma manuscrita de SPCO y Operador">
-        <span>📝</span> Parte Diario SPCO
+      <button class="action-btn btn-sheet" id="btn-open-daily-sheet" title="Generar Reporte SPCO para impresión y firma de SPCO y Operador">
+        <span>📝</span> Reporte SPCO
+      </button>
+
+      <button class="action-btn btn-import-spco" id="btn-open-spco-import" title="Copiar trabajos del Excel del SPCO, verificarlos en una tabla e importarlos a la vía">
+        <span>📥</span> Importar SPCO
       </button>
 
       <!-- Acceso a Patio Taller Santa Anita (PTSA) en ventana/pestaña independiente -->
-      <a href="ptsa.html" target="_blank" class="action-btn" id="btn-open-ptsa-tab" style="background: linear-gradient(135deg, #064e3b 0%, #022c22 100%); border: 1.5px solid #10b981; color: #a7f3d0; box-shadow: 0 0 16px rgba(16, 185, 129, 0.35); text-decoration: none; display: inline-flex; align-items: center; gap: 6px;" title="Abrir Plano Esquemático SCADA y Gestión de Trabajos de Patio Taller Santa Anita (PTSA) en pestaña nueva">
+      <a href="ptsa.html" target="_blank" class="action-btn" id="btn-open-ptsa-tab" title="Abrir Plano Esquemático SCADA y Gestión de Trabajos de Patio Taller Santa Anita (PTSA) en pestaña nueva">
         <span>🏭</span> Patio Taller (PTSA) ↗
       </a>
 
@@ -540,6 +180,11 @@
             <stop offset="35%" stop-color="#f97316" />
             <stop offset="70%" stop-color="#facc15" />
             <stop offset="100%" stop-color="#84cc16" />
+          </linearGradient>
+
+          <linearGradient id="crew-beam-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="rgba(254, 240, 138, 0.38)" />
+            <stop offset="100%" stop-color="rgba(254, 240, 138, 0)" />
           </linearGradient>
 
           <linearGradient id="headlight-beam-east" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -1070,6 +715,9 @@
           </g>
         </g>
 
+        <!-- Capa de Hotspots de Pascua (descubrimiento arcade, no invasiva) -->
+        <g id="easter-hotspots-layer"></g>
+
         <!-- Capa Dinámica de Entidades (Cuadrillas y Vehículos Estáticos en Vía) -->
         <g id="dynamic-entities-layer"></g>
 
@@ -1157,7 +805,7 @@
           </select>
         </div>
         <div class="quickcard-field" style="flex:1; justify-content:flex-end;">
-          <button type="button" class="btn-table-action" id="quickcard-btn-reassign" style="background:#0284c7; color:#fff; font-weight:bold; height:32px; border-radius:4px;" title="Hacer clic o arrastrar en el plano de vía para reubicar o ampliar">
+          <button type="button" class="btn-table-action" id="quickcard-btn-reassign" title="Hacer clic o arrastrar en el plano de vía para reubicar o ampliar">
             📍 Mover en Mapa
           </button>
         </div>
@@ -1231,6 +879,7 @@
           <tr>
             <th>Tipo</th>
             <th>ID / Responsable</th>
+            <th>Permiso</th>
             <th>Empresa / Disciplina</th>
             <th>Vía</th>
             <th>Tramos Cubiertos</th>
@@ -1315,6 +964,85 @@
     </div>
   </div>
 
+  <!-- ==========================================================================
+       MODAL: IMPORTAR TRABAJOS DEL SPCO (COPIAR DESDE EXCEL → VERIFICAR → VÍA)
+       ========================================================================== -->
+  <div class="modal-overlay" id="modal-import-spco">
+    <div class="modal-window spco-modal-window">
+      <div class="modal-header">
+        <h3><span>📥</span> Importar trabajos del SPCO</h3>
+        <button class="modal-close-btn" data-close="modal-import-spco">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="spco-help">
+          Copia desde Excel las columnas con encabezados (EMPRESA CONTRATISTA, ORDEN DE TRABAJO, RESPONSABLE DEL TRABAJO,
+          COMENTARIOS DEL PCO, RADIO TETRA y, si existe, USO DE VAF / TREN) y pégalas aquí.
+          <br>El tramo se toma del <b>comentario del PCO</b>: <code>E20-E21 via 2</code> · <code>PV20 - E24</code> · <code>E21-E20</code> · <code>PTSA ...</code>
+          <br>Sin vía = ambas vías. Con "via 1" o "via 2" = solo esa vía.
+          <br>Vehículo si aparece VAF, DRESINA, UNIMON, BIVIAL, LOCOMOTORA, etc. Si no aparece ninguna, es a pie.
+        </p>
+        <textarea id="spco-input" class="spco-input" placeholder="Pega aquí los datos copiados desde Excel (con encabezados)"></textarea>
+
+        <div class="spco-actions">
+          <button type="button" class="action-btn btn-primary" id="spco-process">Procesar y verificar</button>
+          <button type="button" class="action-btn" id="spco-clear">Limpiar</button>
+        </div>
+
+        <div id="spco-alert" class="spco-alert" hidden></div>
+        <div id="spco-summary" class="spco-summary"></div>
+        <div id="spco-table-wrap"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="action-btn btn-primary" id="spco-import" disabled>Importar al simulador</button>
+        <button type="button" class="action-btn" data-close="modal-import-spco">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: ALCANCE DE ACCIÓN PARA TRABAJOS EN DOS VÍAS (AMBAS O SOLO UNA)
+       ========================================================================== -->
+  <div class="modal-overlay" id="modal-group-scope">
+    <div class="modal-window" style="max-width:440px;">
+      <div class="modal-header">
+        <h3><span>🛤️</span> <span id="group-scope-title">Acción sobre el trabajo</span></h3>
+        <button class="modal-close-btn" data-close="modal-group-scope">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="group-scope-text" style="font-size:12px; color:#94a3b8; line-height:1.5;"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="action-btn btn-primary" id="gs-v1" hidden>Solo V1</button>
+        <button type="button" class="action-btn btn-primary" id="gs-v2" hidden>Solo V2</button>
+        <button type="button" class="action-btn" id="gs-d1" hidden>D1</button>
+        <button type="button" class="action-btn" id="gs-d2" hidden>D2</button>
+        <button type="button" class="action-btn" data-close="modal-group-scope">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       MODAL: CONEXIÓN DEL TRABAJO CON RAMAL D1 / D2 (SOLO SI PASA POR EL EMPALME)
+       ========================================================================== -->
+  <div class="modal-overlay" id="modal-ramal-conexion">
+    <div class="modal-window" style="max-width:440px;">
+      <div class="modal-header">
+        <h3><span>🔀</span> Conectar con ramal</h3>
+        <button class="modal-close-btn" data-close="modal-ramal-conexion">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="rc-text" style="font-size:12px; color:#94a3b8; line-height:1.5;"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="action-btn btn-primary" id="rc-d1" hidden>Conectar D1</button>
+        <button type="button" class="action-btn btn-primary" id="rc-d2" hidden>Conectar D2</button>
+        <button type="button" class="action-btn" id="rc-no">No conectar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Pitch Removido para interfaz limpia -->
 
   <!-- ==========================================================================
@@ -1323,7 +1051,7 @@
   <div class="modal-overlay" id="modal-daily-sheet">
     <div class="modal-window sheet-modal-window">
       <div class="modal-header">
-        <h3><span>📝</span> Parte Diario de Control de Trabajos en Vía Principal (PCO / SPCO)</h3>
+        <h3><span>📝</span> Reporte SPCO de Control de Trabajos en Vía Principal</h3>
         <button class="modal-close-btn" data-close="modal-daily-sheet">✕</button>
       </div>
 
@@ -1353,99 +1081,138 @@
   </div>
 
   <!-- ==========================================================================
-       MODAL: SECRETOS, HUEVOS DE PASCUA Y JUKEBOX ANIME / VIDEOJUEGOS RETRO
+       MODAL: SALA ARCADE — DESCUBRIMIENTO DE HOTSPOTS Y JUKEBOX CHIPTUNE
        ========================================================================== -->
   <div class="modal-overlay" id="modal-easter-eggs">
     <div class="modal-window arcade-modal-window">
       <div class="modal-header">
-        <h3 class="arcade-title"><span>👾</span> Sala Arcade — Huevos de Pascua & Jukebox Chiptune</h3>
+        <h3 class="arcade-title"><span>👾</span> Sala Arcade — Secretos descubiertos: <span id="arcade-counter">0/8</span></h3>
         <button class="modal-close-btn" data-close="modal-easter-eggs">✕</button>
       </div>
 
       <div class="modal-body">
-        <p style="font-size:11.5px; color:#cbd5e1; line-height:1.5;">
-          ¡Modos ocultos y música clásica sintetizada en tiempo real con Web Audio API! Activa temas legendarios y mira a las cuadrillas y vehículos desatar sus poderes con auras animadas.
+        <p class="arcade-intro">
+          Explora el plano esquemático y haz clic en los 8 hotspots ocultos para desbloquear melodías chiptune originales y reacciones de las cuadrillas. Los enlaces oficiales te permiten escuchar las obras originales en plataformas externas.
         </p>
 
-        <div class="arcade-grid">
-          <!-- DBZ -->
-          <div class="arcade-card">
-            <div class="arcade-card-header">
-              <span class="arcade-song-name">🔥 Dragon Ball Z</span>
-              <span class="arcade-badge-tag" style="background:#78350f; color:#fde047;">Super Saiyan</span>
-            </div>
-            <div style="font-size:10px; color:#94a3b8;">Cha-La Head-Cha-La + Aura dorada Ki y relámpagos</div>
-            <div style="display:flex; gap:6px; margin-top:4px;">
-              <button type="button" class="arcade-btn-play" data-song="dbz" style="flex:1;">▶ Activar</button>
-              <button type="button" class="arcade-btn-stop" data-stop="dbz">⏹</button>
-            </div>
-          </div>
-
-          <!-- Mario -->
-          <div class="arcade-card">
-            <div class="arcade-card-header">
-              <span class="arcade-song-name">⭐ Super Mario Bros</span>
-              <span class="arcade-badge-tag" style="background:#1e3a8a; color:#93c5fd;">Starman</span>
-            </div>
-            <div style="font-size:10px; color:#94a3b8;">Overworld Theme + Estrella de invencibilidad arcoíris</div>
-            <div style="display:flex; gap:6px; margin-top:4px;">
-              <button type="button" class="arcade-btn-play" data-song="mario" style="flex:1;">▶ Activar</button>
-              <button type="button" class="arcade-btn-stop" data-stop="mario">⏹</button>
-            </div>
-          </div>
-
+        <div class="arcade-grid" id="arcade-grid">
           <!-- Pokémon -->
-          <div class="arcade-card">
+          <div class="arcade-card" data-hotspot="pokemon">
             <div class="arcade-card-header">
               <span class="arcade-song-name">⚡ Pokémon</span>
-              <span class="arcade-badge-tag" style="background:#713f12; color:#fef08a;">Pikachu</span>
+              <span class="arcade-status">🔒 Pista de ubicación</span>
             </div>
-            <div style="font-size:10px; color:#94a3b8;">Wild Pokemon Battle + Truenos y chispas eléctricas</div>
-            <div style="display:flex; gap:6px; margin-top:4px;">
-              <button type="button" class="arcade-btn-play" data-song="pokemon" style="flex:1;">▶ Activar</button>
-              <button type="button" class="arcade-btn-stop" data-stop="pokemon">⏹</button>
+            <div class="arcade-hint">Cerca del pozo de ventilación PV20, junto a la torre superior.</div>
+            <div class="arcade-actions">
+              <button type="button" class="arcade-btn-play" data-song="pokemon">▶ Chiptune 8-bit</button>
+              <a class="arcade-link" href="https://www.youtube.com/@PokemonOficialES" target="_blank" rel="noopener noreferrer">↗ Escuchar tema oficial</a>
             </div>
           </div>
 
-          <!-- Zelda -->
-          <div class="arcade-card">
+          <!-- Dragon Ball Z -->
+          <div class="arcade-card" data-hotspot="dbz">
+            <div class="arcade-card-header">
+              <span class="arcade-song-name">🔥 Dragon Ball Z</span>
+              <span class="arcade-status">🔒 Pista de ubicación</span>
+            </div>
+            <div class="arcade-hint">Sobre el cruce en X del bretelle oeste de Óvalo Santa Anita.</div>
+            <div class="arcade-actions">
+              <button type="button" class="arcade-btn-play" data-song="dbz">▶ Chiptune 8-bit</button>
+              <a class="arcade-link" href="https://www.youtube.com/@DragonBallOficial" target="_blank" rel="noopener noreferrer">↗ Escuchar tema oficial</a>
+            </div>
+          </div>
+
+          <!-- Navidad L2 -->
+          <div class="arcade-card" data-hotspot="xmas">
+            <div class="arcade-card-header">
+              <span class="arcade-song-name">🎄 Navidad L2</span>
+              <span class="arcade-status">🔒 Pista de ubicación</span>
+            </div>
+            <div class="arcade-hint">Sobre el badge de la estación E21 Óvalo Santa Anita.</div>
+            <div class="arcade-actions">
+              <button type="button" class="arcade-btn-play" data-song="xmas">▶ Villancico chiptune</button>
+              <a class="arcade-link" href="https://open.spotify.com/search/villancicos%20clasicos" target="_blank" rel="noopener noreferrer">↗ Escuchar villancicos</a>
+            </div>
+          </div>
+
+          <!-- Super Mario -->
+          <div class="arcade-card" data-hotspot="mario">
+            <div class="arcade-card-header">
+              <span class="arcade-song-name">⭐ Super Mario</span>
+              <span class="arcade-status">🔒 Pista de ubicación</span>
+            </div>
+            <div class="arcade-hint">Sobre la topera final oeste (FIN VP) del lado de Evitamiento.</div>
+            <div class="arcade-actions">
+              <button type="button" class="arcade-btn-play" data-song="mario">▶ Fanfarria 8-bit</button>
+              <a class="arcade-link" href="https://www.youtube.com/@NintendoAmerica" target="_blank" rel="noopener noreferrer">↗ Escuchar tema oficial</a>
+            </div>
+          </div>
+
+          <!-- The Legend of Zelda -->
+          <div class="arcade-card" data-hotspot="zelda">
             <div class="arcade-card-header">
               <span class="arcade-song-name">🗡️ The Legend of Zelda</span>
-              <span class="arcade-badge-tag" style="background:#064e3b; color:#86efac;">Triforce</span>
+              <span class="arcade-status">🔒 Pista de ubicación</span>
             </div>
-            <div style="font-size:10px; color:#94a3b8;">Song of Storms + Aura mística esmeralda Triforce</div>
-            <div style="display:flex; gap:6px; margin-top:4px;">
-              <button type="button" class="arcade-btn-play" data-song="zelda" style="flex:1;">▶ Activar</button>
-              <button type="button" class="arcade-btn-stop" data-stop="zelda">⏹</button>
+            <div class="arcade-hint">Sobre la topera final este (FIN VP) del lado de Mercado Santa Anita.</div>
+            <div class="arcade-actions">
+              <button type="button" class="arcade-btn-play" data-song="zelda">▶ Arpegio 8-bit</button>
+              <a class="arcade-link" href="https://www.youtube.com/@NintendoAmerica" target="_blank" rel="noopener noreferrer">↗ Escuchar tema oficial</a>
             </div>
           </div>
 
-          <!-- Evangelion -->
-          <div class="arcade-card" style="grid-column: span 2;">
+          <!-- Pac-Man -->
+          <div class="arcade-card" data-hotspot="pacman">
             <div class="arcade-card-header">
-              <span class="arcade-song-name">🤖 Neon Genesis Evangelion</span>
-              <span class="arcade-badge-tag" style="background:#4c1d95; color:#d8b4fe;">EVA-01 Berserk</span>
+              <span class="arcade-song-name">ᗧ••• Pac-Man</span>
+              <span class="arcade-status">🔒 Pista de ubicación</span>
             </div>
-            <div style="font-size:10px; color:#94a3b8;">A Cruel Angel's Thesis + Furia Berserk violeta/verde y Campo AT</div>
-            <div style="display:flex; gap:6px; margin-top:4px;">
-              <button type="button" class="arcade-btn-play" data-song="evangelion" style="flex:1;">▶ Activar Modo Berserk</button>
-              <button type="button" class="arcade-btn-stop" data-stop="evangelion">⏹</button>
+            <div class="arcade-hint">Bajo el andén Vía 1 de la estación E22 Colectora Industrial.</div>
+            <div class="arcade-actions">
+              <button type="button" class="arcade-btn-play" data-song="pacman">▶ Interludio arcade</button>
+              <a class="arcade-link" href="https://www.youtube.com/@BandaiNamcoAm" target="_blank" rel="noopener noreferrer">↗ Escuchar tema oficial</a>
+            </div>
+          </div>
+
+          <!-- Sonic the Hedgehog -->
+          <div class="arcade-card" data-hotspot="sonic">
+            <div class="arcade-card-header">
+              <span class="arcade-song-name">💨 Sonic</span>
+              <span class="arcade-status">🔒 Pista de ubicación</span>
+            </div>
+            <div class="arcade-hint">Sobre la aguja del cambiavías CV-02, cerca de Colectora Industrial.</div>
+            <div class="arcade-actions">
+              <button type="button" class="arcade-btn-play" data-song="sonic">▶ Rings 8-bit</button>
+              <a class="arcade-link" href="https://www.youtube.com/@SEGA" target="_blank" rel="noopener noreferrer">↗ Escuchar tema oficial</a>
+            </div>
+          </div>
+
+          <!-- Tetris / Evangelion -->
+          <div class="arcade-card" data-hotspot="eva">
+            <div class="arcade-card-header">
+              <span class="arcade-song-name">🤖 Tetris / Evangelion</span>
+              <span class="arcade-status">🔒 Pista de ubicación</span>
+            </div>
+            <div class="arcade-hint">En la antena de la Torre de Control del Patio Taller Santa Anita.</div>
+            <div class="arcade-actions">
+              <button type="button" class="arcade-btn-play" data-song="evangelion">▶ Danza 8-bit</button>
+              <a class="arcade-link" href="https://open.spotify.com/search/evangelion%20cruel%20angel%20thesis" target="_blank" rel="noopener noreferrer">↗ Escuchar tema oficial</a>
             </div>
           </div>
         </div>
 
         <div class="arcade-cheat-box">
-          <strong style="color:#f472b6;">🎮 CÓDIGOS SECRETOS DE TECLADO Y CLICS OCULTOS:</strong>
-          <ul style="margin-top:6px; padding-left:18px; display:flex; flex-direction:column; gap:4px;">
-            <li><strong>Código Konami:</strong> Pulsa <span class="arcade-cheat-code">↑ ↑ ↓ ↓ ← → ← → B A</span> en cualquier momento para desatar el Super Saiyan.</li>
-            <li><strong>Palabras Clave:</strong> Escribe en el teclado en cualquier momento: <span class="arcade-cheat-code">dbz</span>, <span class="arcade-cheat-code">mario</span>, <span class="arcade-cheat-code">poke</span>, <span class="arcade-cheat-code">zelda</span> o <span class="arcade-cheat-code">eva</span>.</li>
-            <li><strong>Clicks Secretos:</strong> Haz 3 clics seguidos en la insignia <span class="arcade-cheat-code">[L2]</span> (Mario), 5 clics en el triángulo de <span class="arcade-cheat-code">VITALIDAD ATS</span> (DBZ), 5 clics en el <span class="arcade-cheat-code">RELOJ</span> (Evangelion), o clic en la topera final (Zelda).</li>
+          <strong>🎮 ATAJOS DE TECLADO:</strong>
+          <ul>
+            <li><strong>Código Konami:</strong> <span class="arcade-cheat-code">↑ ↑ ↓ ↓ ← → ← → B A</span> activa el modo Super Saiyan.</li>
+            <li><strong>Palabras clave:</strong> escribe <span class="arcade-cheat-code">dbz</span>, <span class="arcade-cheat-code">mario</span>, <span class="arcade-cheat-code">poke</span>, <span class="arcade-cheat-code">zelda</span> o <span class="arcade-cheat-code">eva</span> en cualquier momento.</li>
+            <li><strong>Clics secretos:</strong> 3 en la insignia <span class="arcade-cheat-code">[L2]</span> (Mario), 5 en <span class="arcade-cheat-code">VITALIDAD ATS</span> (DBZ) o 5 en el <span class="arcade-cheat-code">RELOJ</span> (Evangelion).</li>
           </ul>
         </div>
       </div>
 
       <div class="modal-footer">
-        <button type="button" class="action-btn" id="btn-stop-all-audio" style="background:#4c0519; border-color:#f43f5e; color:#fecdd3;">⏹ Detener Toda la Música</button>
+        <button type="button" class="action-btn" id="btn-stop-all-audio">⏹ Detener Música</button>
         <button type="button" class="action-btn" data-close="modal-easter-eggs">Cerrar</button>
       </div>
     </div>
@@ -1457,10 +1224,44 @@
     <div id="popover-body"></div>
   </div>
 
+  <!-- ==========================================================================
+       MENÚ CONTEXTUAL PARA TOKENS EN VISTA DE VÍA (VP)
+       Editar / Eliminar / Reubicar / Zona Segura directamente desde la VP
+       ========================================================================== -->
+  <div id="vp-token-ctxmenu" class="vp-token-ctxmenu" style="display:none;">
+    <div class="ctxmenu-header" id="ctxmenu-header">👷 Cuadrilla</div>
+    <ul class="ctxmenu-list">
+      <li class="ctxmenu-item" id="ctxmenu-edit" title="Abrir panel de edición completa">
+        <span class="ctxmenu-icon">✏️</span> Editar
+      </li>
+      <li class="ctxmenu-item" id="ctxmenu-reassign" title="Reubicar o ampliar tramos en la vía">
+        <span class="ctxmenu-icon">📍</span> Reubicar / Ampliar
+      </li>
+      <li class="ctxmenu-item" id="ctxmenu-safezone" title="Replegar a zona segura (andén) o reanudar en vía" style="display:none;">
+        <span class="ctxmenu-icon">🛡️</span> <span id="ctxmenu-safezone-text">Zona Segura</span>
+      </li>
+      <li class="ctxmenu-item" id="ctxmenu-finish" title="Concluir trabajo y registrar hora de salida">
+        <span class="ctxmenu-icon">✅</span> Concluir Trabajo
+      </li>
+      <li class="ctxmenu-divider"></li>
+      <li class="ctxmenu-item ctxmenu-danger" id="ctxmenu-delete" title="Eliminar / despejar de la vía">
+        <span class="ctxmenu-icon">🗑️</span> Eliminar
+      </li>
+    </ul>
+  </div>
+
   <!-- Toast Container -->
   <div id="toast-container"></div>
 
   <!-- Script Principal del Simulador -->
-  <script src="simulator.js?v=20261111_05"></script>
+  <script src="js/vp/config-topology.js?v=20261114_01"></script>
+  <script src="js/vp/safety-interlocking.js?v=20261114_01"></script>
+  <script src="js/vp/audio-arcade.js?v=20261114_02"></script>
+  <script src="js/vp/sprites-catalog.js?v=20261114_01"></script>
+  <script src="js/vp/render-map.js?v=20261114_01"></script>
+  <script src="js/vp/drag-interactions.js?v=20261114_01"></script>
+  <script src="js/vp/animation-engine.js?v=20261114_01"></script>
+  <script src="js/vp/dock-reports.js?v=20261114_01"></script>
+  <script src="js/vp/importador-spco.js?v=20261114_01"></script>
 </body>
 </html>

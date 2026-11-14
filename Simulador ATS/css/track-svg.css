@@ -1,0 +1,391 @@
+
+
+.action-btn.btn-catenary {
+  border-left: 3px solid var(--accent-cyan);
+}
+
+/* ==========================================================================
+   5. ÁREA PRINCIPAL: LIENZO SVG DE VÍA PRINCIPAL
+   ========================================================================== */
+#main-viewport {
+  flex: 1;
+  position: relative;
+  background: radial-gradient(circle at 50% 50%, #0e1726 0%, #090e18 100%);
+  overflow: hidden;
+}
+
+#svg-pan-zoom-container {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+#svg-pan-zoom-container:active {
+  cursor: grabbing;
+}
+
+#track-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Líneas de Vía ATS */
+.svg-track-line {
+  stroke: var(--via-nominal);
+  stroke-width: 6.5px;
+  stroke-linecap: round;
+  transition: stroke 0.25s, filter 0.25s;
+}
+
+.svg-track-zone {
+  cursor: pointer;
+}
+
+.svg-track-zone:hover .svg-track-line {
+  stroke: #94a3b8;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.5));
+}
+
+/* Zona iluminada por Magnetismo durante Drag */
+.zone-hover-active .svg-track-line {
+  stroke: #38bdf8 !important;
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.85)) !important;
+}
+
+/* Zona en Conflicto Prohibido */
+.zone-forbidden .svg-track-line {
+  stroke: var(--via-prohibido) !important;
+  stroke-dasharray: 8 4 !important;
+  filter: drop-shadow(0 0 14px rgba(239, 68, 68, 0.95)) !important;
+}
+
+/* ==========================================================================
+   ESTACIONES Y ANDENES: NUEVA PALETA AMIGABLE Y ALTO CONTRASTE
+   ========================================================================== */
+.station-group {
+  cursor: pointer;
+}
+
+/* Insignia Principal de Estación */
+.station-pill-badge {
+  fill: #0284c7;
+  stroke: #38bdf8;
+  stroke-width: 1.5px;
+  rx: 15px;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
+  transition: all 0.2s var(--ease-out);
+}
+
+.station-group:hover .station-pill-badge {
+  fill: #0369a1;
+  stroke: #7dd3fc;
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.6));
+}
+
+.station-pill-text {
+  fill: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  text-anchor: middle;
+}
+
+/* Andenes (Plataformas) de Estación */
+.platform-box {
+  fill: #142238;
+  stroke: #2b456b;
+  stroke-width: 1.5px;
+  rx: 6px;
+  transition: all 0.2s var(--ease-out);
+}
+
+.station-group:hover .platform-box {
+  fill: #1c304f;
+  stroke: var(--accent-cyan);
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.4));
+}
+
+.platform-text {
+  fill: #f8fafc;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-anchor: middle;
+  letter-spacing: 0.8px;
+}
+
+/* Pozos de Ventilación (PV) - Alta Visibilidad y Espaciado Generoso */
+.pozo-group {
+  cursor: pointer;
+}
+
+.pozo-tower {
+  fill: #1b263b;
+  stroke: #f59e0b;
+  stroke-width: 1.5px;
+  rx: 5px;
+  transition: all 0.2s;
+}
+
+.pozo-group:hover .pozo-tower {
+  fill: #2d3e5e;
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+}
+
+.pozo-label {
+  fill: #fde68a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 900;
+  text-anchor: middle;
+}
+
+/* Cambiavías / Bretelles */
+.switch-group {
+  cursor: pointer;
+}
+
+.crossover-line {
+  stroke: #5a738e;
+  stroke-width: 4.5px;
+  stroke-linecap: round;
+  transition: stroke 0.25s, filter 0.25s;
+}
+
+.switch-group:hover .crossover-line {
+  stroke: var(--accent-cyan);
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.6));
+}
+
+.switch-group.switch-diverted .crossover-line {
+  stroke: var(--accent-amber);
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.7));
+}
+
+.switch-point {
+  fill: #829ab1;
+  transition: fill 0.2s;
+}
+
+.switch-group:hover .switch-point {
+  fill: #38bdf8;
+}
+
+/* Señales ATS */
+.signal-group {
+  cursor: pointer;
+}
+
+.signal-post {
+  stroke: #5a738e;
+  stroke-width: 2px;
+}
+
+.signal-head {
+  fill: #080f1a;
+  stroke: #2e4468;
+  stroke-width: 1px;
+}
+
+.signal-lamp {
+  transition: fill 0.2s, filter 0.2s;
+}
+
+.signal-lamp.lamp-green {
+  fill: #10b981;
+  filter: drop-shadow(0 0 6px #10b981);
+}
+
+.signal-lamp.lamp-red {
+  fill: #ef4444;
+  filter: drop-shadow(0 0 6px #ef4444);
+}
+
+.signal-lamp.lamp-amber {
+  fill: #f59e0b;
+  filter: drop-shadow(0 0 6px #f59e0b);
+}
+
+/* Controles de Vista Flotantes */
+#viewport-controls {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 80;
+  background: var(--bg-panel);
+  padding: 6px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.vp-control-btn {
+  width: 36px;
+  height: 36px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-bright);
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.vp-control-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.vp-control-btn:active {
+  transform: scale(0.92);
+}
+
+/* ==========================================================================
+   14. SISTEMA DE CATENARIA Y ENERGÍA 1500V DC (10 ZONAS OFICIALES LÍNEA 2)
+   LÍNEA DELGADA Y ELEGANTE DE ARCO DE ENERGÍA Y FLUJO ELÉCTRICO REFINADO
+   ========================================================================== */
+
+/* Grupo general de catenaria */
+.catenary-sector-group {
+  transition: opacity 0.3s ease;
+}
+
+/* 1. Capa de Ionización / Corona Eléctrica (Aura tenue y delgada) */
+.catenary-corona-arc {
+  stroke: rgba(56, 189, 248, 0.28);
+  stroke-width: 2.2px;
+  stroke-linecap: round;
+  fill: none;
+  filter: drop-shadow(0 0 2.5px rgba(56, 189, 248, 0.65));
+  animation: lightningCoronaPulse 1.4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+/* 2. Capa de Flujo de Plasma Eléctrico (Línea delgada y nítida) */
+.catenary-plasma-stream {
+  stroke: #38bdf8;
+  stroke-width: 1.1px;
+  stroke-linecap: round;
+  stroke-dasharray: 18 10 4 10;
+  fill: none;
+  filter: drop-shadow(0 0 2px #38bdf8);
+  animation: lightningSurge 0.75s linear infinite;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+/* 3. Capa de Núcleo de Rayo Blanco Incandescente Ultrafino */
+.catenary-lightning-core {
+  stroke: #ffffff;
+  stroke-width: 0.65px;
+  stroke-linecap: round;
+  stroke-dasharray: 28 8 10 5 36 8;
+  fill: none;
+  filter: drop-shadow(0 0 1.5px #ffffff);
+  animation: lightningSurge 0.45s linear infinite reverse, lightningCrackle 0.22s steps(2, start) infinite;
+  pointer-events: none;
+}
+
+/* Zona de Catenaria con Corte de Tensión (0V - Desenergizado) */
+.track-power-flow.catenary-cut,
+.catenary-cut-line {
+  stroke: #475569 !important;
+  stroke-dasharray: 4 4 !important;
+  stroke-width: 0.85px !important;
+  opacity: 0.4 !important;
+  animation: none !important;
+  filter: none !important;
+}
+
+.track-power-flow.catenary-cut:hover,
+.catenary-cut-line:hover {
+  stroke: #ef4444 !important;
+  opacity: 0.9 !important;
+}
+
+/* Cartela de corte de tensión 1500V */
+.catenary-cut-badge {
+  pointer-events: none;
+}
+
+/* Botón de Catenaria en Barra de Herramientas */
+.action-btn.btn-catenary {
+  border-left: 3px solid var(--accent-cyan);
+}
+
+.action-btn.btn-catenary.catenary-warning {
+  border-left-color: var(--accent-amber);
+  color: #fbbf24;
+}
+
+.action-btn.btn-catenary.catenary-danger {
+  border-left-color: var(--accent-red);
+  color: #fca5a5;
+}
+
+/* ==========================================================================
+   19. ESTILOS DE ESTACIONES, ANDENES Y POZOS DE VENTILACIÓN AMPLIADOS
+   ========================================================================== */
+.station-pill-badge {
+  fill: #0284c7 !important;
+  stroke: #7dd3fc !important;
+  stroke-width: 2.5px !important;
+  filter: drop-shadow(0 4px 14px rgba(2, 132, 199, 0.75)) !important;
+}
+
+.station-pill-text {
+  font-size: 13.5px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1.2px !important;
+}
+
+.platform-box {
+  fill: #0f1c30 !important;
+  stroke: #38bdf8 !important;
+  stroke-width: 2px !important;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.65)) !important;
+}
+
+.platform-text {
+  font-size: 12.5px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1px !important;
+}
+
+/* Pozos de Ventilación (PV) Gigantes de Alta Visibilidad en Pantalla Completa */
+.pozo-tower-large {
+  fill: #151e30 !important;
+  stroke: #f59e0b !important;
+  stroke-width: 2.8px !important;
+  rx: 7px !important;
+  filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.65)) drop-shadow(0 6px 14px rgba(0, 0, 0, 0.8)) !important;
+  transition: all 0.2s ease-out;
+}
+
+.pozo-group:hover .pozo-tower-large {
+  fill: #223250 !important;
+  stroke: #fbbf24 !important;
+  filter: drop-shadow(0 0 24px rgba(245, 158, 11, 0.95)) !important;
+}
+
+.pozo-label-large {
+  fill: #ffffff !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  font-size: 15.5px !important;
+  font-weight: 900 !important;
+  letter-spacing: 1.2px !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
+}
+
+/* Rotación de aspas de pozos manejada nativamente en SVG con <animateTransform> para centrado absoluto en (0,0) */
+.pozo-fan-blades {
+  pointer-events: none;
+}

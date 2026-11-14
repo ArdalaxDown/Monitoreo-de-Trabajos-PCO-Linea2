@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Simulador ATS — Monitoreo de Trabajos en Vía Principal | OCIR Línea 2</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ==========================================================================
+       1. CABECERA PRINCIPAL (HEADER SISTEMA ATS)
+       ========================================================================== -->
+  <header id="sys-header">
+    <div class="brand-section">
+      <div class="brand-badge">L2</div>
+      <div class="brand-title">
+        <h1>SISTEMA ATS — MONITOREO DE VÍA PRINCIPAL (VP)</h1>
+        <span>SUPERVISIÓN DE TRABAJOS Y MANIOBRAS — PCO / OCIR METRO DE LIMA</span>
+      </div>
+    </div>
+
+    <div class="header-telemetry">
+      <div class="telemetry-card">
+        <span class="card-icon">👷</span>
+        <div class="card-info">
+          <label>Cuadrillas a Pie</label>
+          <strong id="counter-crews">0</strong>
+        </div>
+      </div>
+
+      <div class="telemetry-card">
+        <span class="card-icon">🚜</span>
+        <div class="card-info">
+          <label>Vehículos Aux.</label>
+          <strong id="counter-vehicles">0</strong>
+        </div>
+      </div>
+
+      <div class="telemetry-card">
+        <span class="card-icon">🚧</span>
+        <div class="card-info">
+          <label>Zonas Ocupadas</label>
+          <strong id="counter-zones">0</strong>
+        </div>
+      </div>
+
+      <button class="sound-toggle-btn sound-on" id="btn-sound-toggle" title="Activar/Silenciar efectos sonoros y tonos TETRA ATS">
+        <span id="sound-icon">🔊</span> <span id="sound-text">Audio ATS</span>
+      </button>
+
+      <div id="clock-display">00:00:00</div>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       2. BARRA DE NAVEGACIÓN RÁPIDA (STATION QUICK-JUMP MINIMAP)
+       ========================================================================== -->
+  <nav id="station-quicknav">
+    <span class="quicknav-title">Navegación:</span>
+    <button class="nav-pill pozo" data-x="160" title="Saltar a Pozo de Ventilación 19">PV19</button>
+    <button class="nav-pill station" data-x="480" title="Saltar a Estación 20 Evitamiento">E20 Evitamiento</button>
+    <button class="nav-pill pozo" data-x="860" title="Saltar a Pozo de Ventilación 20">PV20</button>
+    <button class="nav-pill station" data-x="1260" title="Saltar a Estación 21 Óvalo Santa Anita">E21 Óvalo Sta. Anita</button>
+    <button class="nav-pill pozo" data-x="1640" title="Saltar a Pozo de Ventilación 21">PV21</button>
+    <button class="nav-pill station" data-x="1900" title="Saltar a Estación 22 Colectora Industrial">E22 Colectora Ind.</button>
+    <button class="nav-pill pozo" data-x="2260" title="Saltar a Pozo de Ventilación 22">PV22</button>
+    <button class="nav-pill station" data-x="2520" title="Saltar a Estación 23 Hermilio Valdizán">E23 Hermilio Valdizán</button>
+    <button class="nav-pill pozo" data-x="2700" title="Saltar a Pozo de Ventilación 23">PV23</button>
+    <button class="nav-pill ptsa" data-x="3180" title="Saltar a Patio Taller Santa Anita (PTSA)">PTSA</button>
+    <button class="nav-pill station" data-x="3180" title="Saltar a Estación 24 Mercado Santa Anita">E24 Mercado Sta. Anita</button>
+    <button class="nav-pill pozo" data-x="3450" title="Saltar a Pozo de Ventilación 24">PV24</button>
+  </nav>
+
+  <!-- ==========================================================================
+       3. BANDEJA DE FICHAS TIPO GOOGLE MAPS / PEGMAN (DRAG & DROP DIRECTO)
+       ========================================================================== -->
+  <nav id="monopoly-toolbar">
+    <div class="toolbar-group">
+      <span class="toolbar-label">Fichas de Asignación:</span>
+
+      <!-- Ficha Pegman Cuadrilla a Pie -->
+      <div class="pegman-chip chip-crew" id="chip-crew" draggable="false" ondragstart="return false;" title="¡Arrastra con click izquierdo para colocar la cuadrilla y pinta varias zonas contiguas!">
+        <div class="pegman-icon-box">👷</div>
+        <div class="pegman-text">
+          <strong>Personal a Pie <span class="drag-hint-badge">Arrastra a la Vía</span></strong>
+          <span>Click izq: arrastrar | Click der: pintar más zonas</span>
+        </div>
+      </div>
+
+      <!-- Ficha Pegman Vehículo Auxiliar -->
+      <div class="pegman-chip chip-vehicle" id="chip-vehicle" draggable="false" ondragstart="return false;" title="¡Arrastra con click izquierdo hacia la vía para maniobra!">
+        <div class="pegman-icon-box">🚜</div>
+        <div class="pegman-text">
+          <strong>Vehículo Auxiliar <span class="drag-hint-badge">Arrastra a la Vía</span></strong>
+          <span>Dresina / Bivial (Incompatible con personal)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar-group">
+      <!-- Control de Tensión de Catenaria 1500V DC -->
+      <button class="action-btn btn-catenary" id="btn-catenary-panel" title="Gestión de Tensión en Catenaria (1500V DC) — Corte por tramos o general">
+        <span id="catenary-icon">⚡</span> <span id="catenary-status-text">1500V: Conforme</span>
+      </button>
+
+      <button class="action-btn" id="btn-open-report" title="Generar acta y reporte para el relevo de guardia OCIR">
+        <span>📋</span> Reporte Turno
+      </button>
+
+      <button class="action-btn btn-sheet" id="btn-open-daily-sheet" title="Generar Parte Diario oficial para firma manuscrita de SPCO y Operador">
+        <span>📝</span> Parte Diario SPCO
+      </button>
+
+      <button class="action-btn" id="btn-clear-all" title="Despejar todas las cuadrillas y vehículos en vía">
+        <span>🧹</span> Despejar Vía
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==========================================================================
+       4. ÁREA DE VISUALIZACIÓN: PLANO ESQUEMÁTICO SVG DE VÍA PRINCIPAL (3550px)
+       ========================================================================== -->
+  <main id="main-viewport">
+    <div id="svg-pan-zoom-container">
+      <svg id="track-svg" viewBox="0 0 3550 520" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+          <filter id="glow-amber" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+          <filter id="glow-gold" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+
+          <!-- Patrón de Franjas de Precaución (Chevrons) Amarillas y Negras para Bivial -->
+          <pattern id="hazard-stripes" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="5" height="10" fill="#facc15" />
+            <rect x="5" width="5" height="10" fill="#0f172a" />
+          </pattern>
+
+          <!-- Degradados de Carrocería Pesada Industrial y Cabina Bivial -->
+          <linearGradient id="veh-cab-paint" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fbbf24" />
+            <stop offset="45%" stop-color="#f59e0b" />
+            <stop offset="100%" stop-color="#d97706" />
+          </linearGradient>
+
+          <linearGradient id="veh-crane-orange" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fb923c" />
+            <stop offset="100%" stop-color="#ea580c" />
+          </linearGradient>
+
+          <linearGradient id="veh-glass-polar" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0284c7" stop-opacity="0.9" />
+            <stop offset="40%" stop-color="#38bdf8" stop-opacity="0.8" />
+            <stop offset="45%" stop-color="#ffffff" stop-opacity="0.9" />
+            <stop offset="55%" stop-color="#0369a1" stop-opacity="0.9" />
+            <stop offset="100%" stop-color="#082f49" stop-opacity="0.95" />
+          </linearGradient>
+
+          <linearGradient id="metal-chrome" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#e2e8f0" />
+            <stop offset="50%" stop-color="#94a3b8" />
+            <stop offset="100%" stop-color="#475569" />
+          </linearGradient>
+
+          <!-- Degradados de Personaje: Casco y Chaleco Alta Visibilidad -->
+          <linearGradient id="worker-helmet-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#fef08a" />
+            <stop offset="40%" stop-color="#facc15" />
+            <stop offset="100%" stop-color="#ca8a04" />
+          </linearGradient>
+
+          <linearGradient id="worker-vest-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ea580c" />
+            <stop offset="35%" stop-color="#f97316" />
+            <stop offset="70%" stop-color="#facc15" />
+            <stop offset="100%" stop-color="#84cc16" />
+          </linearGradient>
+
+          <linearGradient id="headlight-beam-east" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+            <stop offset="25%" stop-color="#38bdf8" stop-opacity="0.5" />
+            <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+          </linearGradient>
+
+          <linearGradient id="headlight-beam-west" x1="100%" y1="0%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+            <stop offset="25%" stop-color="#38bdf8" stop-opacity="0.5" />
+            <stop offset="100%" stop-color="#38bdf8" stop-opacity="0" />
+          </linearGradient>
+        </defs>
+
+        <!-- Fondo Cuadrícula y Bóveda del Túnel Subterráneo -->
+        <g id="grid-background" opacity="0.15">
+          <line x1="0" y1="100" x2="3550" y2="100" stroke="#334460" stroke-dasharray="4 8" />
+          <line x1="0" y1="270" x2="3550" y2="270" stroke="#334460" stroke-dasharray="2 6" />
+          <line x1="0" y1="410" x2="3550" y2="410" stroke="#334460" stroke-dasharray="4 8" />
+          <!-- Líneas de bóveda subterránea (Techo y Solera de túnel de concreto) -->
+          <line x1="0" y1="198" x2="3550" y2="198" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="6 8" opacity="0.35" />
+          <line x1="0" y1="352" x2="3550" y2="352" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="6 8" opacity="0.35" />
+        </g>
+
+        <!-- Capa de Franjas y Selección Multi-Zona de Vía -->
+        <g id="work-span-layer"></g>
+        <!-- Capa de previsualización durante arrastre (NO borra work-span-layer) -->
+        <g id="drag-selection-layer"></g>
+
+        <!-- Capa de Ondulaciones (Ripples) al soltar fichas -->
+        <g id="ripples-layer"></g>
+
+        <!-- Capa de Zonas de Vía (Tramos Clicables y Exclusiones) -->
+        <g id="track-zones-layer"></g>
+
+        <!-- Capa Interactiva de Catenaria 1500V DC (Hilos de Contacto por Tramo) -->
+        <g id="catenary-layer"></g>
+
+        <!-- Capa de Infraestructura Fija (Vías, Cambiavías, Estaciones, Pozos) -->
+        <g id="infrastructure-layer">
+          <!-- Durmientes de concreto (Ties/Sleepers) bajo vías principales -->
+          <line x1="50" y1="220" x2="3510" y2="220" stroke="#162238" stroke-width="13" stroke-dasharray="2 10" pointer-events="none" />
+          <line x1="50" y1="330" x2="3510" y2="330" stroke="#162238" stroke-width="13" stroke-dasharray="2 10" pointer-events="none" />
+
+          <!-- Paragolpes Extremo Oeste (Cola Maniobras Evitamiento) -->
+          <g transform="translate(40, 205)">
+            <rect x="0" y="0" width="9" height="135" fill="#f59e0b" rx="2" stroke="#d97706" stroke-width="1" />
+            <line x1="4.5" y1="0" x2="4.5" y2="135" stroke="#78350f" stroke-width="2" stroke-dasharray="6 6" />
+            <circle cx="4.5" cy="15" r="3.5" fill="#ef4444" />
+            <circle cx="4.5" cy="120" r="3.5" fill="#ef4444" />
+          </g>
+          <text x="44" y="192" fill="#94a3b8" font-size="9.5" text-anchor="middle" font-weight="bold" font-family="monospace">FIN VP (OESTE)</text>
+
+          <!-- Paragolpes Extremo Este (Cola Maniobras Mercado Santa Anita) -->
+          <g transform="translate(3510, 205)">
+            <rect x="0" y="0" width="9" height="135" fill="#f59e0b" rx="2" stroke="#d97706" stroke-width="1" />
+            <line x1="4.5" y1="0" x2="4.5" y2="135" stroke="#78350f" stroke-width="2" stroke-dasharray="6 6" />
+            <circle cx="4.5" cy="15" r="3.5" fill="#ef4444" />
+            <circle cx="4.5" cy="120" r="3.5" fill="#ef4444" />
+          </g>
+          <text x="3514" y="192" fill="#94a3b8" font-size="9.5" text-anchor="middle" font-weight="bold" font-family="monospace">FIN VP (ESTE)</text>
+
+          <!-- VÍA 2 (Superior) - Sentido hacia Callao (Oeste) -->
+          <line x1="50" y1="220" x2="3510" y2="220" class="svg-track-line" id="line-via2" />
+          <text x="70" y="208" fill="#38bdf8" font-size="12" font-weight="bold" font-family="monospace">VÍA 2 ◄ (HACIA CALLAO / OESTE)</text>
+
+          <!-- VÍA 1 (Inferior) - Sentido hacia Ate (Este) -->
+          <line x1="50" y1="330" x2="3510" y2="330" class="svg-track-line" id="line-via1" />
+          <text x="70" y="356" fill="#38bdf8" font-size="12" font-weight="bold" font-family="monospace">VÍA 1 ► (HACIA ATE / ESTE)</text>
+
+          <!-- CAMBIAVÍAS / BRETELLES / ESCAPES -->
+          <!-- Escape 1: Post-Evitamiento (E20 a PV20) -->
+          <g class="switch-group" id="sw-e20-pv20" data-switch-id="CV-01" title="Cambiavías CV-01">
+            <line x1="670" y1="220" x2="750" y2="330" class="crossover-line" />
+            <circle cx="670" cy="220" r="4.5" class="switch-point" />
+            <circle cx="750" cy="330" r="4.5" class="switch-point" />
+            <text x="710" y="275" fill="#94a3b8" font-size="9" font-family="monospace" text-anchor="middle">CV-01</text>
+          </g>
+
+          <!-- Bretelle 1 (Escape Doble en X): Previo a Óvalo Santa Anita (PV20 a E21) -->
+          <g class="switch-group" id="bretelle-1" data-switch-id="BT-01" title="Bretelle Oeste E21">
+            <line x1="1000" y1="220" x2="1080" y2="330" class="crossover-line" />
+            <line x1="1000" y1="330" x2="1080" y2="220" class="crossover-line" />
+            <circle cx="1000" cy="220" r="4.5" class="switch-point" />
+            <circle cx="1080" cy="220" r="4.5" class="switch-point" />
+            <circle cx="1000" cy="330" r="4.5" class="switch-point" />
+            <circle cx="1080" cy="330" r="4.5" class="switch-point" />
+            <text x="1040" y="280" fill="#38bdf8" font-size="9.5" font-family="monospace" font-weight="bold" text-anchor="middle">BRETELLE E21 (O)</text>
+          </g>
+
+          <!-- Bretelle 2 (Escape Doble en X): Posterior a Óvalo Santa Anita (E21 a PV21) -->
+          <g class="switch-group" id="bretelle-2" data-switch-id="BT-02" title="Bretelle Este E21">
+            <line x1="1440" y1="220" x2="1520" y2="330" class="crossover-line" />
+            <line x1="1440" y1="330" x2="1520" y2="220" class="crossover-line" />
+            <circle cx="1440" cy="220" r="4.5" class="switch-point" />
+            <circle cx="1520" cy="220" r="4.5" class="switch-point" />
+            <circle cx="1440" cy="330" r="4.5" class="switch-point" />
+            <circle cx="1520" cy="330" r="4.5" class="switch-point" />
+            <text x="1480" y="280" fill="#38bdf8" font-size="9.5" font-family="monospace" font-weight="bold" text-anchor="middle">BRETELLE E21 (E)</text>
+          </g>
+
+          <!-- Escape 2: Entre Colectora Industrial y Hermilio Valdizán (E22 a E23) -->
+          <g class="switch-group" id="sw-e22-e23" data-switch-id="CV-02" title="Cambiavías CV-02">
+            <line x1="2080" y1="220" x2="2160" y2="330" class="crossover-line" />
+            <circle cx="2080" cy="220" r="4.5" class="switch-point" />
+            <circle cx="2160" cy="330" r="4.5" class="switch-point" />
+            <text x="2120" y="275" fill="#94a3b8" font-size="9" font-family="monospace" text-anchor="middle">CV-02</text>
+          </g>
+
+          <!-- ZONA ENTRE E23 Y E24: DIAGONAL CV-03 (ENTRE V1 Y V2) -->
+          <g class="switch-group" id="sw-e23-e24" data-switch-id="CV-03" title="Escape diagonal CV-03 entre V1 y V2">
+            <line x1="2780" y1="330" x2="2850" y2="220" class="crossover-line" />
+            <circle cx="2780" cy="330" r="4.5" class="switch-point" />
+            <circle cx="2850" cy="220" r="4.5" class="switch-point" />
+            <text x="2815" y="290" fill="#94a3b8" font-size="9" font-family="monospace" text-anchor="middle">CV-03</text>
+          </g>
+
+          <!-- =====================================================================
+               PATIO TALLER SANTA ANITA (PTSA) - COMPLEJO ELEVADO (VÍA PASA LIBRE POR DEBAJO)
+               ===================================================================== -->
+          <g id="box-ptsa-elevated" transform="translate(3030, -12)" title="Patio Taller Santa Anita (PTSA) - Centro de Mantenimiento y Maniobras">
+            <!-- Marco base del complejo de talleres (asentado de Y=-12 a Y=34, libre de la vía en Y=43) -->
+            <rect x="0" y="0" width="300" height="46" fill="#0d1829" stroke="#1e3452" stroke-width="1.5" rx="6" />
+
+            <!-- FILA SUPERIOR: Rótulo Principal y Badge de Operación (Totalmente visible y despejado) -->
+            <rect x="8" y="5" width="186" height="17" fill="#142640" stroke="#38bdf8" stroke-width="1.2" rx="4" />
+            <text x="101" y="17.5" fill="#ffffff" font-size="9.5" font-weight="900" font-family="monospace" letter-spacing="0.5px" text-anchor="middle">PATIO TALLER SANTA ANITA (PTSA)</text>
+            
+            <rect x="200" y="5" width="92" height="17" fill="#064e3b" stroke="#10b981" stroke-width="1" rx="4" />
+            <text x="246" y="16.5" fill="#a7f3d0" font-size="8" font-weight="800" font-family="monospace" text-anchor="middle">MANIOBRAS / PCO</text>
+
+            <!-- FILA INTERMEDIA: Bahías de Taller, Cochera con Tren Estacionado y Torre -->
+            <!-- Taller de Mantenimiento -->
+            <rect x="8" y="26" width="62" height="15" fill="#13233a" stroke="#1e3a5f" stroke-width="1" rx="2" />
+            <text x="39" y="37" fill="#94a3b8" font-size="7" font-family="monospace" font-weight="bold" text-anchor="middle">TALLER BOGIES</text>
+
+            <!-- Vía de Cochera con Silueta Limpia de Tren Estacionado -->
+            <rect x="74" y="26" width="138" height="15" fill="#0f172a" stroke="#253a5c" stroke-width="1" rx="2" />
+            <line x1="78" y1="33.5" x2="208" y2="33.5" stroke="#334155" stroke-width="1.2" />
+            <!-- Tren estacionado en cochera interior de PTSA -->
+            <g transform="translate(132, 28)">
+              <rect x="0" y="0" width="60" height="11" rx="2" fill="#1e293b" stroke="#38bdf8" stroke-width="0.8" />
+              <rect x="5" y="2" width="9" height="5" fill="#38bdf8" opacity="0.75" rx="0.5" />
+              <rect x="18" y="2" width="9" height="5" fill="#38bdf8" opacity="0.75" rx="0.5" />
+              <rect x="31" y="2" width="9" height="5" fill="#38bdf8" opacity="0.75" rx="0.5" />
+              <rect x="44" y="2" width="9" height="5" fill="#38bdf8" opacity="0.75" rx="0.5" />
+              <circle cx="56" cy="4.5" r="1.5" fill="#ef4444" />
+            </g>
+
+            <!-- Torre de Control de Maniobras PTSA -->
+            <rect x="216" y="26" width="76" height="15" fill="#152642" stroke="#38bdf8" stroke-width="1" rx="2" />
+            <text x="254" y="37" fill="#38bdf8" font-size="7.5" font-family="monospace" font-weight="bold" text-anchor="middle">TORRE CONTROL</text>
+            <circle cx="284" cy="20" r="2.5" class="ptsa-tower-beacon" />
+            <line x1="284" y1="26" x2="284" y2="20" stroke="#94a3b8" stroke-width="1.2" />
+          </g>
+
+          <!-- VÍA DE MANIOBRAS HORIZONTAL PTSA: Une D1 (3050, 43) y D2 (3310, 43) pasando limpiamente por debajo del complejo -->
+          <line x1="3050" y1="43" x2="3310" y2="43" stroke="#475569" stroke-width="4.5" stroke-linecap="round" />
+          <circle cx="3050" cy="43" r="4.5" fill="#38bdf8" />
+          <circle cx="3310" cy="43" r="4.5" fill="#10b981" />
+
+          <!-- DIAGONAL 1 (D1): Nace antes de E24 en Vía 2 y sube a PTSA (Delta X = 130, pendiente /) -->
+          <g class="switch-group" id="ramal-ptsa-d1" data-switch-id="D1" title="Diagonal D1 hacia Patio Santa Anita">
+            <path d="M 2920,220 L 3050,43" fill="none" class="crossover-line" />
+            <circle cx="2920" cy="220" r="4.5" class="switch-point" />
+            <text x="2965" y="125" fill="#38bdf8" font-size="11" font-weight="900" font-family="monospace" text-anchor="middle">D1</text>
+          </g>
+
+          <!-- DIAGONAL 2 (D2): Nace pasando E24 en Vía 2 y sube a PTSA (Delta X = 130, simetría exacta, pendiente \) -->
+          <g class="switch-group" id="ramal-ptsa-d2" data-switch-id="D2" title="Diagonal D2 hacia Patio Santa Anita">
+            <path d="M 3440,220 L 3310,43" fill="none" class="crossover-line" />
+            <circle cx="3440" cy="220" r="4.5" class="switch-point" />
+            <text x="3395" y="125" fill="#10b981" font-size="11" font-weight="900" font-family="monospace" text-anchor="middle">D2</text>
+          </g>
+        </g>
+
+        <!-- Capa de Estaciones y Andenes (E20 a E24) - Limpio, Sin "Oeste/Este", Sin "PRÓX:2m" -->
+        <g id="stations-layer">
+          <!-- E20: Evitamiento (Centro X = 480) -->
+          <g class="station-group" id="st-e20" transform="translate(380, 0)" title="Estación E20 Evitamiento">
+            <rect class="station-pill-badge" x="0" y="110" width="200" height="30" />
+            <text class="station-pill-text" x="100" y="130">E20 · EVITAMIENTO</text>
+            
+            <!-- Andén Vía 2 con PSD LEDs y franja podotáctil amarilla -->
+            <rect class="platform-box" x="0" y="155" width="200" height="34" />
+            <line x1="4" y1="187" x2="196" y2="187" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="187" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="176">ANDÉN VÍA 2</text>
+
+            <!-- Andén Vía 1 con PSD LEDs y franja podotáctil amarilla -->
+            <rect class="platform-box" x="0" y="350" width="200" height="34" />
+            <line x1="4" y1="352" x2="196" y2="352" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="352" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="373">ANDÉN VÍA 1</text>
+          </g>
+
+          <!-- E21: Óvalo Santa Anita (Centro X = 1260) -->
+          <g class="station-group" id="st-e21" transform="translate(1160, 0)" title="Estación E21 Óvalo Santa Anita">
+            <rect class="station-pill-badge" x="0" y="110" width="200" height="30" />
+            <text class="station-pill-text" x="100" y="130">E21 · ÓVALO STA. ANITA</text>
+            
+            <rect class="platform-box" x="0" y="155" width="200" height="34" />
+            <line x1="4" y1="187" x2="196" y2="187" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="187" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="176">ANDÉN VÍA 2</text>
+
+            <rect class="platform-box" x="0" y="350" width="200" height="34" />
+            <line x1="4" y1="352" x2="196" y2="352" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="352" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="373">ANDÉN VÍA 1</text>
+          </g>
+
+          <!-- E22: Colectora Industrial (Centro X = 1900) -->
+          <g class="station-group" id="st-e22" transform="translate(1800, 0)" title="Estación E22 Colectora Industrial">
+            <rect class="station-pill-badge" x="0" y="110" width="200" height="30" />
+            <text class="station-pill-text" x="100" y="130">E22 · COLECTORA IND.</text>
+            
+            <rect class="platform-box" x="0" y="155" width="200" height="34" />
+            <line x1="4" y1="187" x2="196" y2="187" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="187" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="176">ANDÉN VÍA 2</text>
+
+            <rect class="platform-box" x="0" y="350" width="200" height="34" />
+            <line x1="4" y1="352" x2="196" y2="352" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="352" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="373">ANDÉN VÍA 1</text>
+          </g>
+
+          <!-- E23: Hermilio Valdizán (Centro X = 2520) -->
+          <g class="station-group" id="st-e23" transform="translate(2420, 0)" title="Estación E23 Hermilio Valdizán">
+            <rect class="station-pill-badge" x="0" y="110" width="200" height="30" />
+            <text class="station-pill-text" x="100" y="130">E23 · H. VALDIZÁN</text>
+            
+            <rect class="platform-box" x="0" y="155" width="200" height="34" />
+            <line x1="4" y1="187" x2="196" y2="187" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="187" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="176">ANDÉN VÍA 2</text>
+
+            <rect class="platform-box" x="0" y="350" width="200" height="34" />
+            <line x1="4" y1="352" x2="196" y2="352" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="352" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="373">ANDÉN VÍA 1</text>
+          </g>
+
+          <!-- E24: Mercado Santa Anita (Centro X = 3180) -->
+          <g class="station-group" id="st-e24" transform="translate(3080, 0)" title="Estación E24 Mercado Santa Anita">
+            <rect class="station-pill-badge" x="0" y="110" width="200" height="30" />
+            <text class="station-pill-text" x="100" y="130">E24 · MERCADO STA. ANITA</text>
+            
+            <rect class="platform-box" x="0" y="155" width="200" height="34" />
+            <line x1="4" y1="187" x2="196" y2="187" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="187" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="187" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="176">ANDÉN VÍA 2</text>
+
+            <rect class="platform-box" x="0" y="350" width="200" height="34" />
+            <line x1="4" y1="352" x2="196" y2="352" stroke="#facc15" stroke-width="2.2" stroke-dasharray="6 3" />
+            <circle cx="20" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="60" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="100" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="140" cy="352" r="2" class="psd-led-blink" />
+            <circle cx="180" cy="352" r="2" class="psd-led-blink" />
+            <text class="platform-text" x="100" y="373">ANDÉN VÍA 1</text>
+          </g>
+        </g>
+
+        <!-- Capa de Pozos de Ventilación (PV19 a PV24) - Pozos Verticales de Túnel Subterráneo -->
+        <g id="pozos-layer">
+          <!-- PV19 (X=160) -->
+          <g class="pozo-group" id="pv-19" transform="translate(160, 46)" title="Pozo de Ventilación 19 - Conexión Túnel">
+            <line x1="-12" y1="32" x2="-12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="12" y1="32" x2="12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="0" y1="32" x2="0" y2="174" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="2 3" />
+            <rect class="pozo-tower" x="-26" y="0" width="52" height="32" rx="4" />
+            <line x1="-20" y1="6" x2="20" y2="6" stroke="#475569" stroke-width="1.2" />
+            <line x1="-20" y1="10" x2="20" y2="10" stroke="#475569" stroke-width="1.2" />
+            <!-- Caja circular del ventilador -->
+            <circle cx="-13" cy="20" r="8" fill="#09101b" stroke="#f59e0b" stroke-width="1" />
+            <!-- Aspas giratorias con animateTransform centrado exactamente en 0,0 -->
+            <g transform="translate(-13, 20)">
+              <g>
+                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.35s" repeatCount="indefinite" />
+                <line x1="-6" y1="0" x2="6" y2="0" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+                <line x1="0" y1="-6" x2="0" y2="6" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+              </g>
+            </g>
+            <text class="pozo-label" x="11" y="24">PV19</text>
+          </g>
+
+          <!-- PV20 (X=860) -->
+          <g class="pozo-group" id="pv-20" transform="translate(860, 46)" title="Pozo de Ventilación 20 - Conexión Túnel">
+            <line x1="-12" y1="32" x2="-12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="12" y1="32" x2="12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="0" y1="32" x2="0" y2="174" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="2 3" />
+            <rect class="pozo-tower" x="-26" y="0" width="52" height="32" rx="4" />
+            <line x1="-20" y1="6" x2="20" y2="6" stroke="#475569" stroke-width="1.2" />
+            <line x1="-20" y1="10" x2="20" y2="10" stroke="#475569" stroke-width="1.2" />
+            <circle cx="-13" cy="20" r="8" fill="#09101b" stroke="#f59e0b" stroke-width="1" />
+            <g transform="translate(-13, 20)">
+              <g>
+                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.35s" repeatCount="indefinite" />
+                <line x1="-6" y1="0" x2="6" y2="0" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+                <line x1="0" y1="-6" x2="0" y2="6" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+              </g>
+            </g>
+            <text class="pozo-label" x="11" y="24">PV20</text>
+          </g>
+
+          <!-- PV21 (X=1640) -->
+          <g class="pozo-group" id="pv-21" transform="translate(1640, 46)" title="Pozo de Ventilación 21 - Conexión Túnel">
+            <line x1="-12" y1="32" x2="-12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="12" y1="32" x2="12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="0" y1="32" x2="0" y2="174" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="2 3" />
+            <rect class="pozo-tower" x="-26" y="0" width="52" height="32" rx="4" />
+            <line x1="-20" y1="6" x2="20" y2="6" stroke="#475569" stroke-width="1.2" />
+            <line x1="-20" y1="10" x2="20" y2="10" stroke="#475569" stroke-width="1.2" />
+            <circle cx="-13" cy="20" r="8" fill="#09101b" stroke="#f59e0b" stroke-width="1" />
+            <g transform="translate(-13, 20)">
+              <g>
+                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.35s" repeatCount="indefinite" />
+                <line x1="-6" y1="0" x2="6" y2="0" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+                <line x1="0" y1="-6" x2="0" y2="6" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+              </g>
+            </g>
+            <text class="pozo-label" x="11" y="24">PV21</text>
+          </g>
+
+          <!-- PV22 (X=2260) -->
+          <g class="pozo-group" id="pv-22" transform="translate(2260, 46)" title="Pozo de Ventilación 22 - Conexión Túnel">
+            <line x1="-12" y1="32" x2="-12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="12" y1="32" x2="12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="0" y1="32" x2="0" y2="174" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="2 3" />
+            <rect class="pozo-tower" x="-26" y="0" width="52" height="32" rx="4" />
+            <line x1="-20" y1="6" x2="20" y2="6" stroke="#475569" stroke-width="1.2" />
+            <line x1="-20" y1="10" x2="20" y2="10" stroke="#475569" stroke-width="1.2" />
+            <circle cx="-13" cy="20" r="8" fill="#09101b" stroke="#f59e0b" stroke-width="1" />
+            <g transform="translate(-13, 20)">
+              <g>
+                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.35s" repeatCount="indefinite" />
+                <line x1="-6" y1="0" x2="6" y2="0" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+                <line x1="0" y1="-6" x2="0" y2="6" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+              </g>
+            </g>
+            <text class="pozo-label" x="11" y="24">PV22</text>
+          </g>
+
+          <!-- PV23 (X=2700) -->
+          <g class="pozo-group" id="pv-23" transform="translate(2700, 46)" title="Pozo de Ventilación 23 - Conexión Túnel">
+            <line x1="-12" y1="32" x2="-12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="12" y1="32" x2="12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="0" y1="32" x2="0" y2="174" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="2 3" />
+            <rect class="pozo-tower" x="-26" y="0" width="52" height="32" rx="4" />
+            <line x1="-20" y1="6" x2="20" y2="6" stroke="#475569" stroke-width="1.2" />
+            <line x1="-20" y1="10" x2="20" y2="10" stroke="#475569" stroke-width="1.2" />
+            <circle cx="-13" cy="20" r="8" fill="#09101b" stroke="#f59e0b" stroke-width="1" />
+            <g transform="translate(-13, 20)">
+              <g>
+                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.35s" repeatCount="indefinite" />
+                <line x1="-6" y1="0" x2="6" y2="0" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+                <line x1="0" y1="-6" x2="0" y2="6" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+              </g>
+            </g>
+            <text class="pozo-label" x="11" y="24">PV23</text>
+          </g>
+
+          <!-- PV24 (X=3450) -->
+          <g class="pozo-group" id="pv-24" transform="translate(3450, 46)" title="Pozo de Ventilación 24 - Conexión Túnel">
+            <line x1="-12" y1="32" x2="-12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="12" y1="32" x2="12" y2="174" stroke="#1e2f47" stroke-width="1.5" stroke-dasharray="4 2" />
+            <line x1="0" y1="32" x2="0" y2="174" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="2 3" />
+            <rect class="pozo-tower" x="-26" y="0" width="52" height="32" rx="4" />
+            <line x1="-20" y1="6" x2="20" y2="6" stroke="#475569" stroke-width="1.2" />
+            <line x1="-20" y1="10" x2="20" y2="10" stroke="#475569" stroke-width="1.2" />
+            <circle cx="-13" cy="20" r="8" fill="#09101b" stroke="#f59e0b" stroke-width="1" />
+            <g transform="translate(-13, 20)">
+              <g>
+                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.35s" repeatCount="indefinite" />
+                <line x1="-6" y1="0" x2="6" y2="0" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+                <line x1="0" y1="-6" x2="0" y2="6" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+              </g>
+            </g>
+            <text class="pozo-label" x="11" y="24">PV24</text>
+          </g>
+        </g>
+
+        <!-- Capa de Señales ATS Clicables -->
+        <g id="signals-layer">
+          <g class="signal-group" id="sig-s20-2" transform="translate(600, 200)" title="Señal S20-2">
+            <line x1="0" y1="0" x2="0" y2="20" class="signal-post" />
+            <circle cx="0" cy="0" r="5" class="signal-lamp lamp-green" />
+            <text x="0" y="-8" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">S20-2</text>
+          </g>
+          <g class="signal-group" id="sig-s20-1" transform="translate(600, 340)" title="Señal S20-1">
+            <line x1="0" y1="0" x2="0" y2="20" class="signal-post" />
+            <circle cx="0" cy="20" r="5" class="signal-lamp lamp-green" />
+            <text x="0" y="32" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">S20-1</text>
+          </g>
+          <g class="signal-group" id="sig-s21-2e" transform="translate(1100, 200)" title="Señal S21-2E">
+            <circle cx="0" cy="0" r="5" class="signal-lamp lamp-green" />
+            <text x="0" y="-8" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">S21-2E</text>
+          </g>
+          <g class="signal-group" id="sig-s21-1o" transform="translate(980, 340)" title="Señal S21-1O">
+            <circle cx="0" cy="20" r="5" class="signal-lamp lamp-green" />
+            <text x="0" y="32" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">S21-1O</text>
+          </g>
+          <g class="signal-group" id="sig-s21-2s" transform="translate(1420, 200)" title="Señal S21-2S">
+            <circle cx="0" cy="0" r="5" class="signal-lamp lamp-green" />
+            <text x="0" y="-8" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">S21-2S</text>
+          </g>
+          <g class="signal-group" id="sig-s21-1s" transform="translate(1540, 340)" title="Señal S21-1S">
+            <circle cx="0" cy="20" r="5" class="signal-lamp lamp-green" />
+            <text x="0" y="32" fill="#94a3b8" font-size="7.5" font-family="monospace" text-anchor="middle">S21-1S</text>
+          </g>
+        </g>
+
+        <!-- Capa Dinámica de Entidades (Cuadrillas y Vehículos Estáticos en Vía) -->
+        <g id="dynamic-entities-layer"></g>
+
+        <!-- Capa de Badges de Múltiples Cuadrillas Coexistiendo -->
+        <g id="multicrew-badges-layer"></g>
+      </svg>
+    </div>
+
+    <!-- Controles Flotantes de Paneo y Zoom -->
+    <div id="viewport-controls">
+      <button class="vp-control-btn" id="btn-zoom-in" title="Acercar plano">+</button>
+      <button class="vp-control-btn" id="btn-zoom-out" title="Alejar plano">−</button>
+      <button class="vp-control-btn" id="btn-zoom-reset" title="Restablecer tamaño (100%)">1:1</button>
+      <button class="vp-control-btn" id="btn-zoom-fit" title="Ajustar toda la línea a la pantalla">⛶</button>
+    </div>
+
+    <!-- Avatar Fantasma Flotante Pegman durante Drag & Drop -->
+    <div id="pegman-drag-ghost">
+      <div class="ghost-inner" id="ghost-emoji">👷</div>
+      <div class="ghost-via-badge via-v2" id="ghost-via-badge">VÍA 2 ◄ (CALLAO)</div>
+    </div>
+
+    <!-- BANNER FLOTANTE DE SEGURIDAD: ¡PROHIBIDO! (INCOMPATIBILIDAD VEHÍCULO Y CUADRILLA) -->
+    <div id="prohibition-hud">
+      <div class="prohibition-title">
+        <span>🚫</span> ¡PROHIBIDO! RIESGO DE COLISIÓN
+      </div>
+      <div class="prohibition-desc" id="prohibition-text">
+        Incompatibilidad de seguridad ATS: No se permite Vehículo Auxiliar y Personal a Pie en el mismo cantón.
+      </div>
+    </div>
+
+    <!-- Tarjeta Rápida Flotante para Editar Ficha Colocada (Para cuando el Operador se desocupe) -->
+    <div id="token-quickcard">
+      <h4 id="quickcard-title"><span>👷</span> Editar Trabajo en Vía <span style="cursor:pointer;" id="quickcard-close">✕</span></h4>
+      
+      <div class="quickcard-field">
+        <label>Responsable / Capataz / Unidad</label>
+        <input type="text" id="quickcard-resp" placeholder="Nombre del responsable">
+      </div>
+
+      <div class="quickcard-field">
+        <label>Empresa / Disciplina</label>
+        <select id="quickcard-company">
+          <option value="Mantenimiento de Vía">Mantenimiento de Vía</option>
+          <option value="Catenaria y Energía">Catenaria y Energía</option>
+          <option value="Señalización ATS/CBI">Señalización ATS/CBI</option>
+          <option value="Telecomunicaciones">Telecomunicaciones</option>
+          <option value="Sistemas de Estación">Sistemas de Estación</option>
+          <option value="Obras Civiles">Obras Civiles</option>
+          <option value="Consorcio Constructor">Consorcio Constructor</option>
+          <option value="Hitachi Rail STS">Hitachi Rail STS</option>
+        </select>
+      </div>
+
+      <div class="quickcard-row">
+        <div class="quickcard-field" style="flex:1;">
+          <label>Canal Radio TETRA</label>
+          <input type="text" id="quickcard-radio" placeholder="Ej. Ch-02 / Radio 304">
+        </div>
+
+        <div class="quickcard-field" id="quickcard-count-box" style="flex:1;">
+          <label>N° Personas</label>
+          <input type="number" id="quickcard-count" min="1" max="50">
+        </div>
+      </div>
+
+      <div class="quickcard-row">
+        <div class="quickcard-field" style="flex:1;">
+          <label>Hora Ingreso</label>
+          <input type="time" id="quickcard-timein">
+        </div>
+        <div class="quickcard-field" style="flex:1;">
+          <label>Hora Salida</label>
+          <input type="time" id="quickcard-timeout">
+        </div>
+      </div>
+
+      <div class="quickcard-row">
+        <div class="quickcard-field" style="flex:1;">
+          <label>Vía Asignada</label>
+          <select id="quickcard-via">
+            <option value="V2">Vía 2 ◄ (Hacia Callao / Oeste)</option>
+            <option value="V1">Vía 1 ► (Hacia Ate / Este)</option>
+          </select>
+        </div>
+        <div class="quickcard-field" style="flex:1; justify-content:flex-end;">
+          <button type="button" class="btn-table-action" id="quickcard-btn-reassign" style="background:#0284c7; color:#fff; font-weight:bold; height:32px; border-radius:4px;" title="Hacer clic o arrastrar en el plano de vía para reubicar o ampliar">
+            📍 Mover en Mapa
+          </button>
+        </div>
+      </div>
+
+      <div class="quickcard-row">
+        <div class="quickcard-field" style="flex:1;">
+          <label>Cantón Desde</label>
+          <select id="quickcard-zone-start"></select>
+        </div>
+        <div class="quickcard-field" style="flex:1;">
+          <label>Cantón Hasta (Ampliación)</label>
+          <select id="quickcard-zone-end"></select>
+        </div>
+      </div>
+
+      <div class="quickcard-field">
+        <label>Resumen de Tramos Cubiertos</label>
+        <input type="text" id="quickcard-zones-desc" readonly style="color:#38bdf8; font-weight:bold;">
+      </div>
+
+      <div class="quickcard-field">
+        <label>Observaciones / Detalle de Trabajo</label>
+        <input type="text" id="quickcard-notes" placeholder="Ej. Inspección de vía y fijaciones">
+      </div>
+
+      <div class="quickcard-actions">
+        <button class="btn-table-action btn-save-action" id="quickcard-btn-save">Guardar</button>
+        <button class="btn-table-action btn-safe-zone" id="quickcard-btn-safezone" title="Mover cuadrilla a andén / zona segura para permitir paso de vehículo">🛡️ Zona Segura</button>
+        <button class="btn-table-action btn-finish-action" id="quickcard-btn-finish" title="Concluir trabajo y archivar en pestaña de Terminados">✔ Concluir</button>
+        <button class="btn-table-action danger" id="quickcard-btn-del" title="Despejar vía">Despejar</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==========================================================================
+       5. PANEL INFERIOR: BITÁCORA ACTIVA DE TRABAJOS EN VÍA (DOCK OCIR)
+       ========================================================================== -->
+  <footer id="bottom-dock">
+    <div class="dock-header">
+      <div class="dock-tabs">
+        <div class="dock-tab active" data-tab="all">
+          Todos los Trabajos <span class="dock-counter-badge" id="badge-tab-all">0</span>
+        </div>
+        <div class="dock-tab" data-tab="crews">
+          Cuadrillas a Pie <span class="dock-counter-badge" id="badge-tab-crews">0</span>
+        </div>
+        <div class="dock-tab" data-tab="vehicles">
+          Vehículos Auxiliares <span class="dock-counter-badge" id="badge-tab-vehicles">0</span>
+        </div>
+        <div class="dock-tab" data-tab="completed">
+          Trabajos Terminados <span class="dock-counter-badge completed-badge" id="badge-tab-completed">0</span>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div class="dock-search-box">
+          <span>🔍</span>
+          <input type="text" id="dock-search-input" placeholder="Buscar responsable, radio, vía...">
+        </div>
+        <div style="font-size:11px; color:#94a3b8;">
+          Haz clic en una fila para <strong style="color:#38bdf8;">centrar en mapa</strong> o editar
+        </div>
+      </div>
+    </div>
+
+    <div class="dock-content">
+      <table class="work-table" id="work-table">
+        <thead>
+          <tr>
+            <th>Tipo</th>
+            <th>ID / Responsable</th>
+            <th>Empresa / Disciplina</th>
+            <th>Vía</th>
+            <th>Tramos Cubiertos</th>
+            <th>Radio TETRA</th>
+            <th>Personal</th>
+            <th>Estado</th>
+            <th>Hora Ingreso</th>
+            <th>Hora Salida</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="work-table-body">
+          <!-- Filas generadas dinámicamente -->
+        </tbody>
+      </table>
+    </div>
+  </footer>
+
+    <!-- ==========================================================================
+       MODAL: GESTIÓN DE CATENARIA Y ENERGÍA 1500V DC (SUBESTACIONES LÍNEA 2)
+       ========================================================================== -->
+  <div class="modal-overlay" id="modal-catenary">
+    <div class="modal-window catenary-modal-window">
+      <div class="modal-header">
+        <h3><span>⚡</span> Control de Tensión de Catenaria (1500V DC) — Línea 2</h3>
+        <button class="modal-close-btn" data-close="modal-catenary">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size:11.5px; color:#94a3b8; line-height:1.5;">
+          Supervisión de subestaciones de tracción (SET) y alimentación 1500V DC. Puedes energizar toda la vía, aplicar corte general preventivo para mantenimiento, o alternar corte cantón por cantón.
+        </p>
+
+        <div class="catenary-global-actions">
+          <button type="button" class="action-btn btn-power-on" id="btn-catenary-all-on">
+            <span>⚡</span> Energizar Toda la Vía (1500V Activo)
+          </button>
+          <button type="button" class="action-btn btn-power-off" id="btn-catenary-all-off">
+            <span>⛔</span> Desenergizar Toda la Vía (Corte General 0V)
+          </button>
+          <button type="button" class="action-btn btn-power-toggle-mode" id="btn-catenary-toggle-mode">
+            <span>🔌</span> Modo Selector: Clic en Vía para Cortar
+          </button>
+        </div>
+
+        <h4 style="font-size:11px; text-transform:uppercase; color:#38bdf8; letter-spacing:0.8px; margin:4px 0 8px 0;">
+          Estado de Tensión por Cantones de Tracción (Etapa 1A):
+        </h4>
+        <div class="catenary-sector-grid" id="catenary-sector-grid">
+          <!-- Generado dinámicamente -->
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="action-btn" data-close="modal-catenary">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       6. MODAL: REPORTE DE TURNO / RELEVO OCIR
+       ========================================================================== -->
+  <div class="modal-overlay" id="modal-report">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3><span>📋</span> Acta de Control de Trabajos en Vía — Turno OCIR</h3>
+        <button class="modal-close-btn" data-close="modal-report">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size:11px; color:#94a3b8; margin-bottom:8px;">
+          Resumen generado automáticamente listo para imprimir o copiar al relevo de guardia entre operadores ATS / OCIR.
+        </p>
+        <div class="report-preview-box" id="report-content-text"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="action-btn" id="btn-copy-report">Copiar Texto</button>
+        <button type="button" class="action-btn btn-primary" id="btn-print-report">Imprimir / Guardar PDF</button>
+        <button type="button" class="action-btn" data-close="modal-report">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Pitch Removido para interfaz limpia -->
+
+  <!-- ==========================================================================
+       8. MODAL: PARTE DIARIO OFICIAL DE TRABAJOS EN VÍA (FIRMAS SPCO Y OPERADOR)
+       ========================================================================== -->
+  <div class="modal-overlay" id="modal-daily-sheet">
+    <div class="modal-window sheet-modal-window">
+      <div class="modal-header">
+        <h3><span>📝</span> Parte Diario de Control de Trabajos en Vía Principal (PCO / SPCO)</h3>
+        <button class="modal-close-btn" data-close="modal-daily-sheet">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="sheet-preview-actions-bar">
+          <span style="font-size:11.5px; color:#94a3b8;">
+            Documento formal listo para exportar e imprimir con casilleros para <strong>firma manuscrita</strong> del Operador de turno y Supervisor SPCO.
+          </span>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="action-btn btn-primary" id="btn-print-daily-sheet">
+              <span>🖨️</span> Imprimir / Guardar PDF
+            </button>
+            <button type="button" class="action-btn" id="btn-export-sheet-html">
+              <span>💾</span> Descargar HTML
+            </button>
+          </div>
+        </div>
+
+        <!-- Contenedor Oficial del Parte Diario (Diseño blanco A4 oficial para impresión y firma a mano) -->
+        <div id="printable-daily-sheet" class="printable-sheet-paper"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="action-btn" data-close="modal-daily-sheet">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popover Flotante de Múltiples Cuadrillas Coexistiendo -->
+  <div id="multicrew-popover">
+    <h4><span id="popover-title">Zona Compartida</span> <span style="font-size:10px; cursor:pointer;" id="popover-close">✕</span></h4>
+    <div id="popover-body"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Script Principal del Simulador -->
+  <script src="simulator.js"></script>
+</body>
+</html>

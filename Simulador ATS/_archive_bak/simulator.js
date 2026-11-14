@@ -1,8 +1,6 @@
 // BLOQUEO ABSOLUTO DEL MENÚ CONTEXTUAL DEL NAVEGADOR
 window.addEventListener('contextmenu', (e) => {
   e.preventDefault();
-  e.stopPropagation();
-  return false;
 }, { capture: true });
 /**
  * ==============================================================================
@@ -529,7 +527,6 @@ function playSound(type) {
 document.addEventListener('DOMContentLoaded', () => {
   initClock();
   initSoundToggle();
-  initQuickNav();
   initTrackZones();
   initPanZoomControls();
   initPegmanMultiZoneDrag();
@@ -542,6 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCatenaryControl();
   initDockToggle();
   initEasterEggs();
+  initTokenContextMenu();
   
   loadPersistedState();
   renderAll();
@@ -583,18 +581,6 @@ function initSoundToggle() {
       showToast('Audio silenciado', 'info');
     }
     persistState();
-  });
-}
-
-function initQuickNav() {
-  document.querySelectorAll('#station-quicknav .nav-pill').forEach(pill => {
-    pill.addEventListener('click', () => {
-      const targetX = parseFloat(pill.getAttribute('data-x'));
-      if (!isNaN(targetX)) {
-        smoothGlideToX(targetX);
-        playSound('jump');
-      }
-    });
   });
 }
 
@@ -750,6 +736,7 @@ function initPegmanMultiZoneDrag() {
   function startDragging(type, clientX, clientY) {
     appState.dragStartZoneIndex = null;
     appState.isDraggingPegman = true;
+    document.body.classList.add('is-dragging-token');
     appState.draggedType = type;
     appState.hoveredVia = 'V2';
     appState.draggedZonesSet.clear();
@@ -757,6 +744,10 @@ function initPegmanMultiZoneDrag() {
     appState.isPaintingWithRightClick = false;
     appState.isCurrentHoverForbidden = false;
     appState.forbiddenReason = '';
+    
+    // Cerrar menú contextual de token si estaba abierto
+    const ctxMenu = document.getElementById('vp-token-ctxmenu');
+    if (ctxMenu) ctxMenu.style.display = 'none';
     
     ghostEmoji.textContent = type === 'crew' ? '👷' : '🚜';
     if (ghostViaBadge) {
@@ -864,6 +855,7 @@ function initPegmanMultiZoneDrag() {
       clearForbidden();
       clearDragSelectionSpan();
       appState.isDraggingPegman = false;
+      document.body.classList.remove('is-dragging-token');
       appState.draggedZonesSet.clear();
       appState.hasPaintedMultiZones = false;
       appState.reassigningEntity = null;
@@ -884,7 +876,7 @@ function initPegmanMultiZoneDrag() {
     // Proximidad interactiva a Ramal D1: (2920, 220) a (3010, 22)
     if (svgPoint.x >= 2890 && svgPoint.x <= 3040 && svgPoint.y >= 15 && svgPoint.y <= 235) {
       const expectedYD1 = 220 - (svgPoint.x - 2920) * (198.0 / 90.0);
-      if (Math.abs(svgPoint.y - expectedYD1) < 36 || (svgPoint.y < 180 && svgPoint.x >= 2920 && svgPoint.x <= 3010)) {
+      if (Math.abs(svgPoint.y - expectedYD1) < 14 && svgPoint.y < 205) {
         targetVia = 'D1';
         hitZone = ZONAS_VIA.find(z => z.id === 'Z-RAMAL-D1');
       }
@@ -893,7 +885,7 @@ function initPegmanMultiZoneDrag() {
     // Proximidad interactiva a Ramal D2: (3440, 220) a (3340, 22)
     if (!hitZone && svgPoint.x >= 3320 && svgPoint.x <= 3460 && svgPoint.y >= 15 && svgPoint.y <= 235) {
       const expectedYD2 = 220 - (3440 - svgPoint.x) * (198.0 / 100.0);
-      if (Math.abs(svgPoint.y - expectedYD2) < 36 || (svgPoint.y < 180 && svgPoint.x >= 3340 && svgPoint.x <= 3440)) {
+      if (Math.abs(svgPoint.y - expectedYD2) < 14 && svgPoint.y < 205) {
         targetVia = 'D2';
         hitZone = ZONAS_VIA.find(z => z.id === 'Z-RAMAL-D2');
       }
@@ -988,6 +980,11 @@ function initPegmanMultiZoneDrag() {
   });
   
   function finalizeDrop(clientX, clientY) {
+    if (appState.isDraggingPegman && appState.viaRequerida && appState.hoveredVia !== appState.viaRequerida) {
+      playSound('forbidden');
+      showToast(`Primero coloca la ${appState.viaRequerida === 'V1' ? 'Vía 1' : 'Vía 2'}. Después se pedirá la otra.`, 'warning');
+      return;
+    }
     ghost.style.display = 'none';
     
     if (!appState.isDraggingPegman) return;
@@ -1006,6 +1003,7 @@ function initPegmanMultiZoneDrag() {
         clearForbidden();
         clearDragSelectionSpan();
         appState.isDraggingPegman = false;
+        document.body.classList.remove('is-dragging-token');
         appState.hasPaintedMultiZones = false;
         appState.reassigningEntity = null;
         return;
@@ -1021,6 +1019,7 @@ function initPegmanMultiZoneDrag() {
       clearForbidden();
       clearDragSelectionSpan();
       appState.isDraggingPegman = false;
+      document.body.classList.remove('is-dragging-token');
       appState.draggedZonesSet.clear();
       appState.hasPaintedMultiZones = false;
       appState.reassigningEntity = null;
@@ -1069,10 +1068,20 @@ function initPegmanMultiZoneDrag() {
       
       appState.reassigningEntity = null;
       appState.isDraggingPegman = false;
+      document.body.classList.remove('is-dragging-token');
       appState.hasPaintedMultiZones = false;
       appState.draggedZonesSet.clear();
       persistState();
       renderAll();
+      if (appState.colaReubicacion && appState.colaReubicacion.length) {
+        const siguiente = appState.colaReubicacion.shift();
+        appState.viaRequerida = siguiente.via;
+        startReassigningToken(siguiente, clientX, clientY, true);
+        showToast(`Ahora coloca la ${siguiente.via === 'V1' ? 'Vía 1' : 'Vía 2'} de ${siguiente.responsible || siguiente.vehicleType}.`, 'info');
+        return;
+      }
+      appState.viaRequerida = null;
+      ofrecerConexionRamal(existing);
       return;
     }
     
@@ -1145,8 +1154,10 @@ function initPegmanMultiZoneDrag() {
     }
     
     appState.isDraggingPegman = false;
+    document.body.classList.remove('is-dragging-token');
     appState.hasPaintedMultiZones = false;
     appState.draggedZonesSet.clear();
+    ofrecerConexionRamal(appState.draggedType === 'crew' ? appState.crews[appState.crews.length - 1] : appState.vehicles[appState.vehicles.length - 1]);
     persistState();
     renderAll();
   }
@@ -1341,6 +1352,7 @@ function initQuickEditCard() {
       // Activar modo de reasignación pegman sobre entidad existente
       appState.reassigningEntity = token;
       appState.isDraggingPegman = true;
+      document.body.classList.add('is-dragging-token');
       appState.draggedType = token.type;
       appState.hoveredVia = token.via;
       appState.draggedZonesSet.clear();
@@ -1435,6 +1447,7 @@ function initQuickEditCard() {
       token.notes = notesInput.value.trim() || token.notes;
     }
     
+    propagarEdicionGrupo(token);
     card.style.display = 'none';
     playSound('coin');
     persistState();
@@ -1473,6 +1486,7 @@ function initQuickEditCard() {
 
 function openQuickEditForToken(token, clientX, clientY) {
   appState.selectedTokenForQuickEdit = token;
+  appState.editarGrupoIds = null;
   const card = document.getElementById('token-quickcard');
   const title = document.getElementById('quickcard-title');
   const respInput = document.getElementById('quickcard-resp');
@@ -1827,7 +1841,7 @@ function renderWorkSpans() {
       path.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        startReassigningToken(crew, e.clientX, e.clientY);
+        showTokenContextMenu(crew, e.clientX, e.clientY);
       });
       layer.appendChild(path);
       return;
@@ -1845,7 +1859,7 @@ function renderWorkSpans() {
       path.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        startReassigningToken(crew, e.clientX, e.clientY);
+        showTokenContextMenu(crew, e.clientX, e.clientY);
       });
       layer.appendChild(path);
       return;
@@ -1865,7 +1879,7 @@ function renderWorkSpans() {
     rect.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      startReassigningToken(crew, e.clientX, e.clientY);
+      showTokenContextMenu(crew, e.clientX, e.clientY);
     });
     layer.appendChild(rect);
   });
@@ -1884,7 +1898,7 @@ function renderWorkSpans() {
       path.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        startReassigningToken(veh, e.clientX, e.clientY);
+        showTokenContextMenu(veh, e.clientX, e.clientY);
       });
       layer.appendChild(path);
       return;
@@ -1902,7 +1916,7 @@ function renderWorkSpans() {
       path.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        startReassigningToken(veh, e.clientX, e.clientY);
+        showTokenContextMenu(veh, e.clientX, e.clientY);
       });
       layer.appendChild(path);
       return;
@@ -1922,7 +1936,7 @@ function renderWorkSpans() {
     rect.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      startReassigningToken(veh, e.clientX, e.clientY);
+      showTokenContextMenu(veh, e.clientX, e.clientY);
     });
     layer.appendChild(rect);
   });
@@ -1930,14 +1944,19 @@ function renderWorkSpans() {
 
 
 // Función para despegar una entidad en modo reasignación (como la primera vez, conservando 100% sus datos)
-function startReassigningToken(entity, clientX, clientY) {
+function startReassigningToken(entity, clientX, clientY, continuandoCola) {
   const card = document.getElementById('token-quickcard');
   if (card) card.style.display = 'none';
+  if (!continuandoCola) {
+    appState.colaReubicacion = [];
+    appState.viaRequerida = null;
+  }
   
   appState.dragStartZoneIndex = null;
   
   appState.reassigningEntity = entity;
   appState.isDraggingPegman = true;
+  document.body.classList.add('is-dragging-token');
   appState.draggedType = entity.type;
   appState.hoveredVia = entity.via;
   appState.draggedZonesSet.clear();
@@ -1965,6 +1984,122 @@ function startReassigningToken(entity, clientX, clientY) {
 
 
 // ==============================================================================
+// MENÚ CONTEXTUAL PARA TOKENS EN VISTA DE VÍA (EDITAR / ELIMINAR / REUBICAR)
+// Accesible con clic derecho sobre cualquier personaje o dresina en la VP
+// ==============================================================================
+let _ctxMenuToken = null; // Token actualmente asociado al menú contextual abierto
+
+function initTokenContextMenu() {
+  const menu = document.getElementById('vp-token-ctxmenu');
+  if (!menu) return;
+
+  const header   = document.getElementById('ctxmenu-header');
+  const btnEdit  = document.getElementById('ctxmenu-edit');
+  const btnReassign = document.getElementById('ctxmenu-reassign');
+  const btnSafe  = document.getElementById('ctxmenu-safezone');
+  const btnSafeText = document.getElementById('ctxmenu-safezone-text');
+  const btnFinish = document.getElementById('ctxmenu-finish');
+  const btnDel   = document.getElementById('ctxmenu-delete');
+
+  // EDITAR → Abre la tarjeta de edición rápida (QuickEdit)
+  btnEdit.addEventListener('click', () => {
+    if (!_ctxMenuToken) return;
+    menu.style.display = 'none';
+    playSound('coin');
+    filaEditar(_ctxMenuToken.id);
+  });
+
+  // REUBICAR / AMPLIAR → Entra en modo de reasignación por arrastre
+  btnReassign.addEventListener('click', () => {
+    if (!_ctxMenuToken) return;
+    menu.style.display = 'none';
+    filaMover(_ctxMenuToken.id);
+  });
+
+  // ZONA SEGURA → Replegar/Reanudar (solo cuadrillas a pie)
+  btnSafe.addEventListener('click', () => {
+    if (!_ctxMenuToken || _ctxMenuToken.type !== 'crew') return;
+    menu.style.display = 'none';
+    filaAndén(_ctxMenuToken.id);
+  });
+
+  // CONCLUIR TRABAJO → Archivar como concluido con hora de salida
+  btnFinish.addEventListener('click', () => {
+    if (!_ctxMenuToken) return;
+    menu.style.display = 'none';
+    const curTime = new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    filaConcluir(_ctxMenuToken.id);
+  });
+
+  // ELIMINAR → Despejar de la vía
+  btnDel.addEventListener('click', () => {
+    if (!_ctxMenuToken) return;
+    menu.style.display = 'none';
+    filaDespejar(_ctxMenuToken.id);
+  });
+
+  // Cerrar el menú al hacer clic fuera o presionar Escape
+  document.addEventListener('mousedown', (e) => {
+    if (menu.style.display !== 'none' && !menu.contains(e.target)) {
+      menu.style.display = 'none';
+      _ctxMenuToken = null;
+    }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menu.style.display !== 'none') {
+      menu.style.display = 'none';
+      _ctxMenuToken = null;
+    }
+  });
+}
+
+/**
+ * Abre el menú contextual flotante sobre un token de cuadrilla o vehículo.
+ * @param {Object} token - Entidad crew o vehicle del appState.
+ * @param {number} clientX - Coordenada X del clic derecho.
+ * @param {number} clientY - Coordenada Y del clic derecho.
+ */
+function showTokenContextMenu(token, clientX, clientY) {
+  const menu = document.getElementById('vp-token-ctxmenu');
+  if (!menu) return;
+
+  _ctxMenuToken = token;
+  playSound('click');
+
+  const header   = document.getElementById('ctxmenu-header');
+  const btnSafe  = document.getElementById('ctxmenu-safezone');
+  const btnSafeText = document.getElementById('ctxmenu-safezone-text');
+
+  if (token.type === 'crew') {
+    header.textContent = '👷 ' + (token.responsible || 'Cuadrilla') + ' (' + token.via + ')';
+    btnSafe.style.display = 'flex';
+    btnSafeText.textContent = token.inSafeZone ? 'Reanudar en Vía' : 'Mover a Zona Segura';
+  } else {
+    header.textContent = '🚜 ' + (token.vehicleType || 'Vehículo') + ' (' + token.via + ')';
+    btnSafe.style.display = 'none';
+  }
+
+  // Posicionar sin desbordar la pantalla
+  menu.style.display = 'block';
+  const menuW = menu.offsetWidth;
+  const menuH = menu.offsetHeight;
+  let posX = clientX;
+  let posY = clientY;
+
+  if (posX + menuW > window.innerWidth - 8) {
+    posX = window.innerWidth - menuW - 8;
+  }
+  if (posY + menuH > window.innerHeight - 8) {
+    posY = window.innerHeight - menuH - 8;
+  }
+  if (posX < 4) posX = 4;
+  if (posY < 4) posY = 4;
+
+  menu.style.left = posX + 'px';
+  menu.style.top = posY + 'px';
+}
+
+// ==============================================================================
 // RESOLUCIÓN DE MODELOS VISUALES DIFERENCIADOS (CUADRILLAS Y VEHÍCULOS)
 // ==============================================================================
 function getCrewModel(crew) {
@@ -1989,364 +2124,332 @@ function renderCrewVisualModel(crew, modelIndex) {
   // 10 Modelos Morfológicamente Únicos de Cuadrilla a Pie (Diseño Industrial Ferroviario)
   switch(mIdx) {
     case 0:
-      // MODELO 0: OPERARIO BATEADOR DE VÍA PESADA (Máquina percutora vertical a 2 tiempos)
+      // M0: Bateador de vía
       return `
-        <!-- Compañero de seguridad con banderín y silbato -->
-        <g class="crew-companion-group" transform="translate(-16, -2)">
-          <circle cx="0" cy="-9" r="3.2" fill="#fde047" stroke="#ca8a04" stroke-width="0.7" />
-          <path d="M -4,-11 Q 0,-15 4,-11 Z" fill="#facc15" />
-          <path d="M -4,-6 L 4,-6 L 3,4 L -3,4 Z" fill="#ea580c" />
-          <line x1="-3" y1="-1" x2="3" y2="-1" stroke="#ffffff" stroke-width="1.2" />
-          <line x1="-2" y1="4" x2="-2" y2="12" stroke="#0f172a" stroke-width="2" />
-          <line x1="2" y1="4" x2="2" y2="12" stroke="#0f172a" stroke-width="2" />
-          <!-- Asta y banderín de señalización -->
-          <line x1="-5" y1="2" x2="-5" y2="-13" stroke="#94a3b8" stroke-width="1.2" />
-          <polygon points="-5,-13 4,-9 -5,-5" fill="#ef4444" class="companion-flag" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <rect x="-3" y="-10" width="6" height="12" rx="1" fill="#475569" stroke="#1e293b" stroke-width="1.2" />
+          <polygon points="-5,-8 5,-8 0,-16" fill="#f97316" stroke="#9a3412" stroke-width="1.2" />
         </g>
-        <!-- Operario principal bateador -->
         <g class="crew-char-body">
-          <!-- Piernas con botas pesadas y rodilleras -->
-          <g class="crew-leg-left"><path d="M -5,4 L -6,11 L -2,11 L -2,4 Z" fill="#1e293b" /><rect x="-6" y="6" width="4" height="3" rx="1" fill="#475569" /><path d="M -7,11 L -1,11 L -1,15 L -8,15 Z" fill="#78350f" /></g>
-          <g class="crew-leg-right"><path d="M 2,4 L 3,11 L 7,11 L 5,4 Z" fill="#1e293b" /><rect x="3" y="6" width="4" height="3" rx="1" fill="#475569" /><path d="M 2,11 L 8,11 L 9,15 L 1,15 Z" fill="#78350f" /></g>
-          <!-- Torso: Parka naranja de alta visibilidad con arnés reflectante en X -->
-          <path d="M -8,-6 L 8,-6 L 7,5 L -7,5 Z" fill="#ea580c" stroke="#c2410c" stroke-width="1" />
-          <line x1="-6" y1="-5" x2="6" y2="4" stroke="#ffffff" stroke-width="1.6" opacity="0.95" />
-          <line x1="6" y1="-5" x2="-6" y2="4" stroke="#ffffff" stroke-width="1.6" opacity="0.95" />
-          <!-- Cabeza y casco con orejeras de protección auditiva -->
-          <circle cx="0" cy="-9" r="4.4" fill="#fde68a" />
-          <path d="M -6,-11 Q 0,-17 6,-11 Z" fill="#facc15" stroke="#ca8a04" stroke-width="1" />
-          <rect x="-7.5" y="-10" width="2.5" height="4" rx="1" fill="#1e293b" />
-          <rect x="5" y="-10" width="2.5" height="4" rx="1" fill="#1e293b" />
-          <!-- Máquina Bateadora de Riel vertical con doble pica percutora -->
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <line x1="-5" y1="-4" x2="5" y2="2" stroke="#f8fafc" stroke-width="1.6" />
+          <line x1="5" y1="-4" x2="-5" y2="2" stroke="#f8fafc" stroke-width="1.6" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#facc15" stroke="#ca8a04" stroke-width="1.2" />
+          <rect x="-7" y="-10" width="2.2" height="4" rx="1" fill="#1e293b" />
+          <rect x="4.8" y="-10" width="2.2" height="4" rx="1" fill="#1e293b" />
           <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
-            <!-- Chasis y motor bicilíndrico -->
-            <rect x="-1" y="-1" width="16" height="11" rx="2" fill="#d97706" stroke="#78350f" stroke-width="1" />
-            <line x1="2" y1="-4" x2="14" y2="-4" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" />
-            <line x1="4" y1="-4" x2="4" y2="-1" stroke="#475569" stroke-width="2" />
-            <line x1="12" y1="-4" x2="12" y2="-1" stroke="#475569" stroke-width="2" />
-            <!-- Picas vibradoras en balasto -->
-            <line x1="4" y1="10" x2="3" y2="18" stroke="#cbd5e1" stroke-width="2.2" stroke-linecap="round" />
-            <line x1="10" y1="10" x2="11" y2="18" stroke="#cbd5e1" stroke-width="2.2" stroke-linecap="round" />
-            <!-- Chispas y polvo de balasto percutido -->
-            <circle cx="3" cy="18" r="1.5" fill="#fef08a" class="crew-work-sparks" />
-            <circle cx="11" cy="18" r="1.5" fill="#fef08a" class="crew-work-sparks" />
+            <rect x="-1" y="-2" width="14" height="10" rx="2" fill="#d97706" stroke="#78350f" stroke-width="1.2" />
+            <line x1="3" y1="-4" x2="11" y2="-4" stroke="#1e293b" stroke-width="2.2" stroke-linecap="round" />
+            <line x1="3" y1="8" x2="2" y2="16" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" />
+            <line x1="9" y1="8" x2="10" y2="16" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round" />
+            <circle cx="2" cy="16" r="1.4" fill="#fef08a" class="crew-work-sparks" />
+            <circle cx="10" cy="16" r="1.4" fill="#fef08a" class="crew-work-sparks" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <line x1="4" y1="-4" x2="14" y2="-10" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" />
+            <rect x="12" y="-12" width="5" height="4" rx="1" fill="#475569" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
           </g>
         </g>`;
 
     case 1:
-      // MODELO 1: JEFE DE CUADRILLA / INSPECTOR ATS CON TABLET HOLOGRÁFICA
+      // M1: Inspector ATS
       return `
-        <!-- Supervisor adjunto con carpeta técnica -->
-        <g class="crew-companion-group" transform="translate(-15, -2)">
-          <circle cx="0" cy="-9" r="3.2" fill="#fed7aa" />
-          <path d="M -4,-11 Q 0,-15 4,-11 Z" fill="#ffffff" stroke="#94a3b8" stroke-width="0.8" />
-          <path d="M -4,-6 L 4,-6 L 3,4 L -3,4 Z" fill="#0284c7" />
-          <line x1="-3" y1="-1" x2="3" y2="-1" stroke="#facc15" stroke-width="1.2" />
-          <line x1="-2" y1="4" x2="-2" y2="12" stroke="#1e293b" stroke-width="2" />
-          <line x1="2" y1="4" x2="2" y2="12" stroke="#1e293b" stroke-width="2" />
-          <!-- Carpeta de enclavamientos -->
-          <rect x="-6" y="-1" width="5" height="7" rx="0.8" fill="#78350f" stroke="#451a03" stroke-width="0.6" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <rect x="-4" y="-3" width="8" height="6" rx="1" fill="#facc15" stroke="#ca8a04" stroke-width="1.2" />
+          <rect x="-3" y="-2" width="6" height="4" fill="#0f172a" />
         </g>
-        <!-- Inspector Jefe ATS -->
         <g class="crew-char-body">
-          <g class="crew-leg-left"><path d="M -4,4 L -5,11 L -1,11 L -1,4 Z" fill="#0f172a" /><path d="M -6,11 L 0,11 L 0,15 L -7,15 Z" fill="#1e293b" /></g>
-          <g class="crew-leg-right"><path d="M 2,4 L 3,11 L 7,11 L 5,4 Z" fill="#0f172a" /><path d="M 2,11 L 8,11 L 8,15 L 1,15 Z" fill="#1e293b" /></g>
-          <!-- Chaleco bicolor Lima/Naranja con credencial y radio -->
-          <path d="M -8,-6 L 8,-6 L 6,5 L -6,5 Z" fill="#84cc16" stroke="#4d7c0f" stroke-width="1" />
-          <rect x="-4" y="-3" width="8" height="6" fill="#ea580c" />
-          <line x1="-7" y1="1" x2="7" y2="1" stroke="#ffffff" stroke-width="1.5" />
-          <!-- Walkie-talkie en hombro con LED parpadeante -->
-          <rect x="-8" y="-9" width="3" height="5" rx="0.6" fill="#0f172a" />
-          <line x1="-6.5" y1="-9" x2="-6.5" y2="-13" stroke="#0f172a" stroke-width="1" />
-          <circle cx="-6.5" cy="-7.5" r="0.8" fill="#22c55e" class="crew-walkie-led" />
-          <!-- Cabeza con casco blanco de ingeniero y visor ahumado -->
-          <circle cx="0.5" cy="-9" r="4.3" fill="#fde68a" />
-          <path d="M -5.5,-11 Q 0.5,-17 6.5,-11 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1" />
-          <path d="M -4,-9 L 5,-9 L 4,-6 L -3,-6 Z" fill="#0369a1" opacity="0.9" />
-          <!-- Tablet digital de diagnóstico ATS -->
-          <g transform="translate(6, -2)" style="display:${isWorking ? 'block' : 'none'};">
-            <rect x="0" y="-5" width="11" height="8" rx="1.2" fill="#0f172a" stroke="#38bdf8" stroke-width="0.9" />
-            <rect x="1.5" y="-3.5" width="8" height="5" fill="#0369a1" />
-            <line x1="2.5" y1="-1" x2="7.5" y2="-1" stroke="#38bdf8" stroke-width="0.9" class="surveyor-laser-beam" />
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <line x1="-5" y1="-1" x2="5" y2="-1" stroke="#f8fafc" stroke-width="1.6" />
+          <rect x="-8" y="-9" width="3" height="5" rx="0.6" fill="#1e293b" />
+          <line x1="-6.5" y1="-9" x2="-6.5" y2="-13" stroke="#1e293b" stroke-width="1.2" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2" />
+          <path d="M -3.5,-9 L 3.5,-9 L 2.5,-6 L -2.5,-6 Z" fill="#38bdf8" opacity="0.9" />
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <rect x="4" y="-6" width="11" height="8" rx="1.2" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2" />
+            <rect x="5.5" y="-4.5" width="8" height="5" fill="#0369a1" />
+            <line x1="6.5" y1="-2" x2="11.5" y2="-2" stroke="#38bdf8" stroke-width="1.2" />
+            <line x1="14" y1="-2" x2="22" y2="-2" stroke="#38bdf8" stroke-width="1" opacity="0.6" class="surveyor-laser-beam" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <rect x="4" y="-2" width="4" height="8" rx="1" fill="#1e293b" />
+            <circle cx="6" cy="-4" r="2.2" fill="#fef08a" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
           </g>
         </g>`;
 
     case 2:
-      // MODELO 2: SOLDADOR ALUMINOTÉRMICO CON PANTALLA ABATIBLE, SOPLETE Y CHISPAS
+      // M2: Soldador aluminotérmico
       return `
-        <!-- Carrito porta-botellas de gas (oxígeno y acetileno) -->
-        <g class="crew-companion-group" transform="translate(-18, 0)">
-          <rect x="-2" y="-12" width="4" height="15" rx="1.5" fill="#1e3a8a" stroke="#1d4ed8" stroke-width="0.8" />
-          <rect x="3" y="-10" width="4" height="13" rx="1.5" fill="#7f1d1d" stroke="#b91c1c" stroke-width="0.8" />
-          <circle cx="0" cy="-13" r="1.2" fill="#cbd5e1" />
-          <circle cx="5" cy="-11" r="1.2" fill="#cbd5e1" />
-          <line x1="1" y1="3" x2="7" y2="3" stroke="#475569" stroke-width="1.8" />
-          <circle cx="4" cy="5" r="2.8" fill="#0f172a" stroke="#94a3b8" stroke-width="0.8" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <rect x="-4" y="-12" width="3.5" height="14" rx="1" fill="#1e3a8a" stroke="#1d4ed8" stroke-width="1" />
+          <rect x="0.5" y="-10" width="3.5" height="12" rx="1" fill="#7f1d1d" stroke="#b91c1c" stroke-width="1" />
         </g>
-        <!-- Soldador con mandil de cuero térmico -->
         <g class="crew-char-body">
-          <g class="crew-leg-left"><path d="M -5,4 L -6,11 L -2,11 L -2,4 Z" fill="#78350f" /><path d="M -7,11 L -1,11 L -1,15 L -8,15 Z" fill="#451a03" /></g>
-          <g class="crew-leg-right"><path d="M 2,4 L 3,11 L 7,11 L 5,4 Z" fill="#78350f" /><path d="M 2,11 L 8,11 L 9,15 L 1,15 Z" fill="#451a03" /></g>
-          <!-- Mandil de descarne marrón y chaleco ignífugo -->
-          <path d="M -7,-6 L 7,-6 L 6,6 L -6,6 Z" fill="#b45309" stroke="#78350f" stroke-width="1" />
-          <rect x="-4" y="-3" width="8" height="9" fill="#78350f" rx="1" />
-          <!-- Careta completa de soldador con visor rectangular inactínico -->
-          <rect x="-4.5" y="-14" width="9" height="10" rx="2" fill="#0f172a" stroke="#ca8a04" stroke-width="1" />
-          <rect x="-2.5" y="-11" width="5" height="3" rx="0.5" fill="#f59e0b" filter="drop-shadow(0 0 3px #f59e0b)" />
-          <!-- Soplete y Crisol de Soldadura de Carril -->
-          <g transform="translate(6, 4)" style="display:${isWorking ? 'block' : 'none'};">
-            <line x1="-3" y1="-2" x2="6" y2="4" stroke="#94a3b8" stroke-width="2" />
-            <!-- Llama de soplete oxiacetilénico azul y núcleo blanco -->
-            <polygon points="6,4 12,6 7,8" fill="#38bdf8" filter="drop-shadow(0 0 4px #0284c7)" />
-            <polygon points="6,4 9,5.5 7,7" fill="#ffffff" />
-            <!-- Cascada de chispas aluminotérmicas incandescentes -->
-            <g class="weld-spark-cascade">
-              <circle cx="8" cy="7" r="1.2" fill="#ffffff" />
-              <circle cx="11" cy="4" r="1.4" fill="#fbbf24" />
-              <circle cx="13" cy="9" r="1.1" fill="#ea580c" />
-              <circle cx="15" cy="6" r="1.3" fill="#facc15" />
-            </g>
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <path d="M -5,-4 L 5,-4 L 4,3 L -4,3 Z" fill="#b45309" />
+          <rect x="-4.5" y="-13" width="9" height="9" rx="2" fill="#1e293b" stroke="#ca8a04" stroke-width="1.2" />
+          <rect x="-2.5" y="-10" width="5" height="3" rx="0.5" fill="#f59e0b" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <line x1="-2" y1="0" x2="8" y2="6" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" />
+            <polygon points="8,6 13,7 9,10" fill="#38bdf8" />
+            <circle cx="10" cy="8" r="1.3" fill="#ffffff" class="crew-work-sparks" />
+            <circle cx="13" cy="5" r="1.3" fill="#fbbf24" class="crew-work-sparks" />
+            <circle cx="12" cy="11" r="1.2" fill="#ef4444" class="crew-work-sparks" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <line x1="4" y1="2" x2="13" y2="-5" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" />
+            <polygon points="13,-5 16,-7 14,-3" fill="#475569" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
           </g>
         </g>`;
 
     case 3:
-      // MODELO 3: TÉCNICO CON CARRO ULTRASÓNICO DE DETECCIÓN DE FISURAS (SPERRY)
+      // M3: Técnico ultrasónico
       return `
-        <!-- Operario con audífonos de alta atenuación -->
-        <g class="crew-char-body" transform="translate(-10, 0)">
-          <g class="crew-leg-left"><path d="M -4,4 L -5,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -6,11 L 0,11 L 0,15 L -7,15 Z" fill="#0f172a" /></g>
-          <g class="crew-leg-right"><path d="M 2,4 L 3,11 L 6,11 L 5,4 Z" fill="#1e293b" /><path d="M 2,11 L 7,11 L 8,15 L 1,15 Z" fill="#0f172a" /></g>
-          <path d="M -7,-6 L 7,-6 L 6,5 L -6,5 Z" fill="#0284c7" stroke="#0369a1" stroke-width="1" />
-          <line x1="-6" y1="-1" x2="6" y2="-1" stroke="#facc15" stroke-width="1.8" />
-          <circle cx="0" cy="-9" r="4.2" fill="#fed7aa" />
-          <path d="M -5,-11 Q 0,-17 5,-11 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="0.8" />
-          <!-- Auriculares grandes amarillos -->
-          <path d="M -5.5,-8 A 5.5,5.5 0 0 1 5.5,-8" stroke="#0f172a" stroke-width="1.5" fill="none" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <rect x="-4" y="-6" width="8" height="10" rx="1" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2" />
+          <line x1="0" y1="-6" x2="0" y2="-11" stroke="#94a3b8" stroke-width="1.2" />
+        </g>
+        <g class="crew-char-body">
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <line x1="-5" y1="-1" x2="5" y2="-1" stroke="#f8fafc" stroke-width="1.6" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="1.2" />
+          <path d="M -5.5,-8 A 5.5,5.5 0 0 1 5.5,-8" stroke="#1e293b" stroke-width="1.6" fill="none" />
           <circle cx="-5.5" cy="-8" r="2.2" fill="#facc15" />
           <circle cx="5.5" cy="-8" r="2.2" fill="#facc15" />
-        </g>
-        <!-- Carrito Ultrasónico Bivial de Riel (Transductores acústicos sobre la cabeza del riel) -->
-        <g transform="translate(6, 1)" style="display:${isWorking ? 'block' : 'none'};">
-          <!-- Chasis del carro y manubrio de empuje -->
-          <line x1="-12" y1="-8" x2="-2" y2="2" stroke="#475569" stroke-width="1.8" />
-          <rect x="-3" y="1" width="16" height="5" rx="1" fill="#334155" stroke="#64748b" stroke-width="0.8" />
-          <!-- Tanque de acoplante de agua/gel -->
-          <rect x="-1" y="-5" width="6" height="6" rx="1" fill="#0284c7" opacity="0.85" />
-          <!-- Pantalla osciloscopio con haz de radar -->
-          <rect x="6" y="-6" width="7" height="7" rx="1" fill="#0f172a" stroke="#22c55e" stroke-width="0.8" />
-          <line x1="7" y1="-2.5" x2="12" y2="-2.5" stroke="#22c55e" stroke-width="1" class="ultrasonic-radar-beam" />
-          <!-- Ruedas y patines palpadores de ultrasonido sobre riel -->
-          <circle cx="-1" cy="7" r="2.5" fill="#0f172a" stroke="#cbd5e1" stroke-width="1" />
-          <circle cx="11" cy="7" r="2.5" fill="#0f172a" stroke="#cbd5e1" stroke-width="1" />
-          <!-- Haz de ultrasonido penetrando el riel -->
-          <polygon points="4,6 7,6 8,15 3,15" fill="#22c55e" opacity="0.45" class="ultrasonic-radar-beam" />
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <rect x="-1" y="2" width="16" height="5" rx="1" fill="#334155" stroke="#64748b" stroke-width="1.2" />
+            <circle cx="2" cy="7" r="2.5" fill="#0f172a" stroke="#cbd5e1" stroke-width="1" />
+            <circle cx="12" cy="7" r="2.5" fill="#0f172a" stroke="#cbd5e1" stroke-width="1" />
+            <rect x="6" y="-5" width="7" height="7" rx="1" fill="#0f172a" stroke="#22c55e" stroke-width="1" />
+            <line x1="7" y1="-1.5" x2="12" y2="-1.5" stroke="#22c55e" stroke-width="1.2" />
+            <polygon points="3,6 6,6 7,15 2,15" fill="#22c55e" opacity="0.45" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <path d="M 4,-2 L 12,-2 L 12,2 L 8,4 L 4,2 Z" fill="#94a3b8" stroke="#475569" stroke-width="1.2" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
+          </g>
         </g>`;
 
     case 4:
-      // MODELO 4: LINIERO ESPECIALISTA EN CATENARIA 1500V (Pértiga aislante y arnés de altura)
+      // M4: Liniero catenaria
       return `
-        <!-- Señalización de puesta a tierra temporal -->
-        <g class="crew-companion-group" transform="translate(-16, 2)">
-          <rect x="-2" y="-6" width="4" height="12" rx="1" fill="#eab308" stroke="#a16207" stroke-width="0.8" />
-          <text x="0" y="2" fill="#000" font-size="6" font-weight="900" text-anchor="middle">⚡</text>
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <rect x="-2" y="-6" width="4" height="12" rx="1" fill="#eab308" stroke="#a16207" stroke-width="1.2" />
+          <circle cx="0" cy="-8" r="2.5" fill="#ef4444" />
+          <text x="0" y="-5" font-size="4" fill="#0f172a" text-anchor="middle" font-weight="bold">⚡</text>
         </g>
         <g class="crew-char-body">
-          <g class="crew-leg-left"><path d="M -4,4 L -5,11 L -1,11 L -1,4 Z" fill="#1e3a8a" /><path d="M -6,11 L 0,11 L 0,15 L -7,15 Z" fill="#0f172a" /></g>
-          <g class="crew-leg-right"><path d="M 2,4 L 3,11 L 6,11 L 5,4 Z" fill="#1e3a8a" /><path d="M 2,11 L 7,11 L 8,15 L 1,15 Z" fill="#0f172a" /></g>
-          <!-- Traje dieléctrico azul marino con arnés anticaídas naranja -->
-          <path d="M -7,-6 L 7,-6 L 6,5 L -6,5 Z" fill="#1e3a8a" stroke="#172554" stroke-width="1" />
-          <line x1="-5" y1="-6" x2="-2" y2="5" stroke="#f97316" stroke-width="1.4" />
-          <line x1="5" y1="-6" x2="2" y2="5" stroke="#f97316" stroke-width="1.4" />
-          <circle cx="0" cy="-9" r="4.2" fill="#fed7aa" />
-          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#0284c7" stroke="#0369a1" stroke-width="1" />
-          <!-- Guantes dieléctricos de alta tensión amarillos -->
-          <circle cx="-7" cy="0" r="2.2" fill="#eab308" />
-          <circle cx="7" cy="0" r="2.2" fill="#eab308" />
-          <!-- Pértiga aislante telescópica apuntando hacia la catenaria -->
-          <g transform="translate(6, 0)" style="display:${isWorking ? 'block' : 'none'};">
-            <!-- Pértiga de fibra de vidrio amarilla de 3 tramos -->
-            <line x1="0" y1="4" x2="8" y2="-24" stroke="#eab308" stroke-width="2" stroke-linecap="round" />
-            <!-- Gancho de puesta a tierra y sensor de tensión en la punta -->
-            <path d="M 7,-23 L 9,-26 L 12,-25" fill="none" stroke="#e2e8f0" stroke-width="1.8" />
-            <!-- Cable flexible de cobre conectado a tierra en el riel -->
-            <path d="M 8,-23 Q 2,-10 0,12" fill="none" stroke="#ea580c" stroke-width="1.4" stroke-dasharray="3 2" />
-            <!-- Micro-chispa de comprobación de ausencia de tensión -->
-            <circle cx="10" cy="-25" r="1.5" fill="#38bdf8" opacity="0.85" />
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <line x1="-4" y1="-6" x2="-1" y2="4" stroke="#f8fafc" stroke-width="1.6" />
+          <line x1="4" y1="-6" x2="1" y2="4" stroke="#f8fafc" stroke-width="1.6" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#38bdf8" stroke="#0284c7" stroke-width="1.2" />
+          <circle cx="-7" cy="0" r="2.2" fill="#facc15" />
+          <circle cx="7" cy="0" r="2.2" fill="#facc15" />
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <line x1="4" y1="2" x2="10" y2="-22" stroke="#eab308" stroke-width="2.2" stroke-linecap="round" />
+            <path d="M 9,-21 L 11,-24 L 14,-23" fill="none" stroke="#e2e8f0" stroke-width="1.8" />
+            <circle cx="12" cy="-23" r="1.6" fill="#38bdf8" class="crew-work-sparks" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <line x1="4" y1="-2" x2="16" y2="-2" stroke="#eab308" stroke-width="2.2" stroke-linecap="round" />
+            <rect x="14" y="-4" width="4" height="4" rx="1" fill="#475569" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
           </g>
         </g>`;
 
     case 5:
-      // MODELO 5: MECÁNICO DE CAMBIOS DE AGUJA Y ACCIONAMIENTOS (Caja de herramientas y llave dinamométrica)
+      // M5: Mecánico de agujas
       return `
-        <!-- Compañero alcanzando repuestos -->
-        <g class="crew-companion-group" transform="translate(-16, -1)">
-          <circle cx="0" cy="-8" r="3" fill="#fed7aa" />
-          <path d="M -4,-10 Q 0,-14 4,-10 Z" fill="#ef4444" />
-          <path d="M -3,-5 L 3,-5 L 2,4 L -2,4 Z" fill="#475569" />
-          <line x1="-2" y1="4" x2="-2" y2="12" stroke="#0f172a" stroke-width="1.8" />
-          <line x1="2" y1="4" x2="2" y2="12" stroke="#0f172a" stroke-width="1.8" />
-          <!-- Aceitera de engrase de agujas -->
-          <path d="M 3,0 L 7,-3 L 6,3 Z" fill="#eab308" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <rect x="-4" y="-2" width="8" height="6" rx="1" fill="#b91c1c" stroke="#7f1d1d" stroke-width="1.2" />
+          <line x1="-2" y1="-2" x2="2" y2="-2" stroke="#fca5a5" stroke-width="1.2" />
         </g>
-        <!-- Mecánico arrodillado ajustando cerrojos de aguja -->
         <g class="crew-char-body">
-          <g class="crew-leg-left"><path d="M -4,2 L -6,8 L -3,11 L 1,11 L 0,6 Z" fill="#334155" /></g>
-          <g class="crew-leg-right"><path d="M 2,2 L 5,6 L 6,11 L 2,11 Z" fill="#334155" /></g>
-          <path d="M -7,-6 L 7,-6 L 5,3 L -5,3 Z" fill="#3b82f6" stroke="#1d4ed8" stroke-width="1" />
-          <line x1="-5" y1="-2" x2="5" y2="-2" stroke="#ffffff" stroke-width="1.4" />
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <rect x="-5" y="-2" width="10" height="3" rx="0.5" fill="#475569" />
           <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
-          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#ef4444" stroke="#b91c1c" stroke-width="1" />
-          <!-- Llave dinamométrica de 1 metro y caja metálica roja de 3 pisos -->
-          <g transform="translate(6, 2)" style="display:${isWorking ? 'block' : 'none'};">
-            <!-- Llave de torque cromada ajustando tirante -->
-            <line x1="-2" y1="2" x2="12" y2="-4" stroke="#cbd5e1" stroke-width="2.2" stroke-linecap="round" />
-            <circle cx="12" cy="-4" r="2.2" fill="#475569" />
-            <!-- Caja de herramientas roja abierta sobre las traviesas -->
-            <rect x="7" y="4" width="12" height="7" rx="1" fill="#b91c1c" stroke="#7f1d1d" stroke-width="0.8" />
-            <line x1="8" y1="4" x2="18" y2="4" stroke="#fca5a5" stroke-width="1" />
-            <circle cx="13" cy="3" r="1.2" fill="#cbd5e1" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#ef4444" stroke="#b91c1c" stroke-width="1.2" />
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <line x1="-2" y1="1" x2="14" y2="-4" stroke="#cbd5e1" stroke-width="2.4" stroke-linecap="round" />
+            <circle cx="14" cy="-4" r="2.2" fill="#475569" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <line x1="4" y1="-2" x2="13" y2="-6" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" />
+            <rect x="11" y="-9" width="4" height="5" rx="1" fill="#eab308" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
           </g>
         </g>`;
 
     case 6:
-      // MODELO 6: TOPÓGRAFO GEODÉSICO DE VÍA CON ESTACIÓN TOTAL ROBÓTICA Y RAYO LÁSER
+      // M6: Topógrafo
       return `
-        <!-- Auxiliar portando jalón con prisma reflectante -->
-        <g class="crew-companion-group" transform="translate(-18, -3)">
-          <circle cx="0" cy="-8" r="3" fill="#fed7aa" />
-          <path d="M -4,-10 Q 0,-14 4,-10 Z" fill="#ffffff" />
-          <path d="M -3,-5 L 3,-5 L 2,4 L -2,4 Z" fill="#f97316" />
-          <line x1="-2" y1="4" x2="-2" y2="12" stroke="#0f172a" stroke-width="1.8" />
-          <line x1="2" y1="4" x2="2" y2="12" stroke="#0f172a" stroke-width="1.8" />
-          <!-- Jalón de fibra de carbono bicolor con prisma circular -->
-          <line x1="4" y1="-14" x2="4" y2="12" stroke="#ef4444" stroke-width="1.5" />
-          <line x1="4" y1="-8" x2="4" y2="2" stroke="#ffffff" stroke-width="1.5" />
-          <circle cx="4" cy="-14" r="2.5" fill="#38bdf8" stroke="#0284c7" stroke-width="0.8" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <line x1="0" y1="-12" x2="0" y2="12" stroke="#ef4444" stroke-width="1.6" />
+          <line x1="0" y1="-4" x2="0" y2="4" stroke="#f8fafc" stroke-width="1.6" />
+          <circle cx="0" cy="-12" r="2.5" fill="#38bdf8" stroke="#0284c7" stroke-width="1" />
         </g>
-        <!-- Topógrafo operando la estación geodésica -->
-        <g class="crew-char-body" transform="translate(-4, 0)">
-          <g class="crew-leg-left"><path d="M -4,4 L -5,11 L -1,11 L -1,4 Z" fill="#0f172a" /><path d="M -6,11 L 0,11 L 0,15 L -7,15 Z" fill="#475569" /></g>
-          <g class="crew-leg-right"><path d="M 2,4 L 3,11 L 6,11 L 5,4 Z" fill="#0f172a" /><path d="M 2,11 L 7,11 L 8,15 L 1,15 Z" fill="#475569" /></g>
-          <path d="M -7,-6 L 7,-6 L 6,5 L -6,5 Z" fill="#f97316" stroke="#c2410c" stroke-width="1" />
-          <line x1="-6" y1="-2" x2="6" y2="-2" stroke="#ffffff" stroke-width="1.6" />
-          <circle cx="0" cy="-9" r="4.2" fill="#fed7aa" />
-          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#facc15" stroke="#ca8a04" stroke-width="1" />
-        </g>
-        <!-- Estación Total Robótica de precisión montada en trípode de madera/aluminio -->
-        <g transform="translate(8, 0)" style="display:${isWorking ? 'block' : 'none'};">
-          <!-- Patas del trípode abiertas -->
-          <line x1="0" y1="-2" x2="-6" y2="13" stroke="#b45309" stroke-width="1.8" />
-          <line x1="0" y1="-2" x2="0" y2="14" stroke="#cbd5e1" stroke-width="1.8" />
-          <line x1="0" y1="-2" x2="6" y2="13" stroke="#b45309" stroke-width="1.8" />
-          <!-- Cabezal de la estación total (Leica verde/amarillo) -->
-          <rect x="-3.5" y="-9" width="7" height="7" rx="1.5" fill="#15803d" stroke="#166534" stroke-width="0.8" />
-          <circle cx="0" cy="-5.5" r="1.8" fill="#38bdf8" />
-          <!-- Haz de rayo láser rojo de medición hacia el carril -->
-          <line x1="3.5" y1="-5.5" x2="22" y2="-5.5" stroke="#ef4444" stroke-width="1.2" class="surveyor-laser-beam" />
-          <circle cx="22" cy="-5.5" r="1.5" fill="#ef4444" class="surveyor-laser-beam" />
+        <g class="crew-char-body">
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <line x1="-5" y1="-3" x2="5" y2="-3" stroke="#f8fafc" stroke-width="1.6" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#facc15" stroke="#ca8a04" stroke-width="1.2" />
+          <path d="M -4,-12 L 4,-12 L 3,-10 L -3,-10 Z" fill="#f8fafc" />
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <line x1="0" y1="2" x2="-5" y2="13" stroke="#b45309" stroke-width="1.8" />
+            <line x1="0" y1="2" x2="0" y2="14" stroke="#cbd5e1" stroke-width="1.8" />
+            <line x1="0" y1="2" x2="5" y2="13" stroke="#b45309" stroke-width="1.8" />
+            <rect x="-3.5" y="-7" width="7" height="7" rx="1.5" fill="#15803d" stroke="#166534" stroke-width="1.2" />
+            <circle cx="0" cy="-3.5" r="1.8" fill="#38bdf8" />
+            <line x1="3.5" y1="-3.5" x2="18" y2="-3.5" stroke="#ef4444" stroke-width="1.2" />
+            <circle cx="18" cy="-3.5" r="1.4" fill="#ef4444" class="crew-work-sparks" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <line x1="3" y1="-2" x2="10" y2="-10" stroke="#b45309" stroke-width="1.8" />
+            <line x1="3" y1="-2" x2="10" y2="2" stroke="#b45309" stroke-width="1.8" />
+            <line x1="3" y1="-2" x2="10" y2="-4" stroke="#cbd5e1" stroke-width="1.8" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
+          </g>
         </g>`;
 
     case 7:
-      // MODELO 7: INGENIERO DE TELECOMUNICACIONES Y FIBRA ÓPTICA (Empalmadora de precisión)
+      // M7: Ingeniero fibra óptica
       return `
-        <!-- Técnico sentado junto a la mesa plegable de empalme -->
-        <g class="crew-char-body" transform="translate(-8, 0)">
-          <g class="crew-leg-left"><path d="M -4,2 L -6,7 L -3,11 L 1,11 L 0,5 Z" fill="#1e293b" /></g>
-          <g class="crew-leg-right"><path d="M 2,2 L 5,6 L 6,11 L 2,11 Z" fill="#1e293b" /></g>
-          <path d="M -7,-6 L 7,-6 L 5,3 L -5,3 Z" fill="#0284c7" stroke="#0369a1" stroke-width="1" />
-          <rect x="-4" y="-3" width="8" height="3" fill="#84cc16" />
-          <circle cx="0" cy="-9" r="4.2" fill="#fed7aa" />
-          <!-- Casco ventilado con gafas lupa de precisión -->
-          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#ffffff" stroke="#94a3b8" stroke-width="1" />
-          <circle cx="2" cy="-8.5" r="1.5" fill="#38bdf8" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <circle cx="0" cy="-4" r="4" fill="none" stroke="#eab308" stroke-width="1.6" />
         </g>
-        <!-- Estación de empalme de fibra óptica y rollo amarillo de buffer -->
-        <g transform="translate(6, 1)" style="display:${isWorking ? 'block' : 'none'};">
-          <!-- Mesa plegable de aluminio -->
-          <line x1="-3" y1="3" x2="13" y2="3" stroke="#94a3b8" stroke-width="1.8" />
-          <line x1="-1" y1="3" x2="-3" y2="12" stroke="#475569" stroke-width="1.2" />
-          <line x1="11" y1="3" x2="13" y2="12" stroke="#475569" stroke-width="1.2" />
-          <!-- Máquina empalmadora por fusión de arco eléctrico -->
-          <rect x="0" y="-3" width="10" height="6" rx="1.2" fill="#0f172a" stroke="#38bdf8" stroke-width="0.8" />
-          <rect x="2" y="-1.5" width="6" height="3" fill="#0284c7" />
-          <!-- Micro-arco de fusión azul -->
-          <circle cx="5" cy="0" r="1.2" fill="#ffffff" opacity="0.9" />
-          <!-- Bobina amarilla de cable de fibra óptica -->
-          <circle cx="15" cy="8" r="3.5" fill="none" stroke="#eab308" stroke-width="1.5" />
+        <g class="crew-char-body">
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <rect x="-6" y="-4" width="5" height="8" rx="1" fill="#475569" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2" />
+          <circle cx="2" cy="-8.5" r="1.5" fill="#38bdf8" />
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <line x1="-2" y1="3" x2="12" y2="3" stroke="#94a3b8" stroke-width="1.8" />
+            <line x1="0" y1="3" x2="-2" y2="12" stroke="#475569" stroke-width="1.2" />
+            <line x1="10" y1="3" x2="12" y2="12" stroke="#475569" stroke-width="1.2" />
+            <rect x="0" y="-3" width="10" height="6" rx="1.2" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2" />
+            <rect x="2" y="-1.5" width="6" height="3" fill="#0284c7" />
+            <circle cx="5" cy="0" r="1.2" fill="#ffffff" class="crew-work-sparks" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <rect x="4" y="-4" width="7" height="5" rx="1" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2" />
+            <rect x="5.5" y="-2.5" width="4" height="2" fill="#38bdf8" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
+          </g>
         </g>`;
 
     case 8:
-      // MODELO 8: OPERARIO CON TRONZADORA ABRASIVA DE RIEL (Disco de corte y lluvia de chispas)
+      // M8: Operador tronzadora
       return `
-        <!-- Compañero con extintor reglamentario y pantalla de protección -->
-        <g class="crew-companion-group" transform="translate(-17, -2)">
-          <circle cx="0" cy="-8" r="3" fill="#fed7aa" />
-          <path d="M -4,-10 Q 0,-14 4,-10 Z" fill="#ef4444" />
-          <path d="M -3,-5 L 3,-5 L 2,4 L -2,4 Z" fill="#ea580c" />
-          <line x1="-2" y1="4" x2="-2" y2="12" stroke="#0f172a" stroke-width="1.8" />
-          <line x1="2" y1="4" x2="2" y2="12" stroke="#0f172a" stroke-width="1.8" />
-          <!-- Extintor rojo de polvo químico ABC -->
-          <rect x="3" y="1" width="3.5" height="9" rx="1" fill="#dc2626" stroke="#991b1b" stroke-width="0.6" />
-          <line x1="4.7" y1="1" x2="4.7" y2="-1" stroke="#0f172a" stroke-width="1.2" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <rect x="-2" y="-2" width="4" height="10" rx="1" fill="#dc2626" stroke="#991b1b" stroke-width="1.2" />
+          <circle cx="0" cy="-4" r="1.5" fill="#f8fafc" />
         </g>
-        <!-- Operario con pantalla facial completa y delantal blindado -->
         <g class="crew-char-body">
-          <g class="crew-leg-left"><path d="M -5,4 L -6,11 L -2,11 L -2,4 Z" fill="#1e293b" /><path d="M -7,11 L -1,11 L -1,15 L -8,15 Z" fill="#0f172a" /></g>
-          <g class="crew-leg-right"><path d="M 2,4 L 3,11 L 6,11 L 5,4 Z" fill="#1e293b" /><path d="M 2,11 L 7,11 L 8,15 L 1,15 Z" fill="#0f172a" /></g>
-          <path d="M -8,-6 L 8,-6 L 7,5 L -7,5 Z" fill="#ea580c" stroke="#c2410c" stroke-width="1" />
-          <!-- Pantalla facial transparente de amolado -->
-          <circle cx="0" cy="-9" r="4.2" fill="#fed7aa" />
-          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#facc15" stroke="#ca8a04" stroke-width="1" />
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#facc15" stroke="#ca8a04" stroke-width="1.2" />
           <rect x="-3" y="-10" width="7" height="6" rx="1.5" fill="#38bdf8" opacity="0.75" />
-          <!-- Tronzadora de gasolina de 350mm fijada al riel -->
-          <g transform="translate(6, 2)" style="display:${isWorking ? 'block' : 'none'};">
-            <!-- Motor naranja de la cortadora -->
-            <rect x="-2" y="-3" width="9" height="7" rx="1.5" fill="#ea580c" stroke="#9a3412" stroke-width="0.8" />
-            <line x1="-3" y1="-3" x2="3" y2="-3" stroke="#0f172a" stroke-width="1.8" />
-            <!-- Disco abrasivo de corte girando sobre la cabeza del riel -->
-            <circle cx="10" cy="5" r="6" fill="#1e293b" stroke="#94a3b8" stroke-width="1.2" />
-            <circle cx="10" cy="5" r="1.8" fill="#e2e8f0" />
-            <!-- Deflector de chispas y abanico de chispas incandescentes -->
-            <path d="M 6,-1 A 6,6 0 0 1 15,3" stroke="#facc15" stroke-width="1.5" fill="none" />
-            <g class="saw-spark-spray">
-              <circle cx="5" cy="7" r="1.3" fill="#ffffff" />
-              <circle cx="2" cy="9" r="1.5" fill="#f59e0b" />
-              <circle cx="-1" cy="11" r="1.2" fill="#ef4444" />
-              <circle cx="0" cy="14" r="1.4" fill="#fbbf24" />
-            </g>
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <rect x="-2" y="-3" width="9" height="7" rx="1.5" fill="#1e293b" stroke="#475569" stroke-width="1.2" />
+            <circle cx="8" cy="5" r="6" fill="#1e293b" stroke="#94a3b8" stroke-width="1.2" />
+            <circle cx="8" cy="5" r="1.8" fill="#e2e8f0" />
+            <path d="M 4,-2 A 6,6 0 0 1 12,1" stroke="#facc15" stroke-width="1.6" fill="none" />
+            <circle cx="4" cy="6" r="1.3" fill="#ffffff" class="crew-work-sparks" />
+            <circle cx="1" cy="9" r="1.4" fill="#f59e0b" class="crew-work-sparks" />
+            <circle cx="-1" cy="12" r="1.2" fill="#ef4444" class="crew-work-sparks" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <circle cx="8" cy="-1" r="4" fill="#1e293b" stroke="#94a3b8" stroke-width="1.2" />
+            <circle cx="8" cy="-1" r="1.2" fill="#e2e8f0" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
           </g>
         </g>`;
 
     case 9:
     default:
-      // MODELO 9: GUARDAVÍAS / BANDERILLERO DE SEGURIDAD (Farol bicolor y disco de ALTO)
+      // M9: Guardavías
       return `
-        <!-- Conos de seguridad reflectantes sobre la vía -->
-        <g class="crew-companion-group" transform="translate(-16, 4)">
-          <polygon points="0,-8 -3,6 3,6" fill="#f97316" stroke="#c2410c" stroke-width="0.6" />
-          <line x1="-1.8" y1="0" x2="1.8" y2="0" stroke="#ffffff" stroke-width="1.2" />
-          <rect x="-4" y="6" width="8" height="1.8" rx="0.5" fill="#0f172a" />
+        <g class="crew-companion-group" transform="translate(-16, 0)">
+          <circle cx="-3" cy="-4" r="2.2" fill="#ef4444" />
+          <circle cx="3" cy="-4" r="2.2" fill="#ef4444" />
+          <rect x="-5" y="2" width="10" height="1.5" rx="0.4" fill="#0f172a" />
         </g>
         <g class="crew-char-body">
-          <g class="crew-leg-left"><path d="M -4,4 L -5,11 L -1,11 L -1,4 Z" fill="#0f172a" /><path d="M -6,11 L 0,11 L 0,15 L -7,15 Z" fill="#1e293b" /></g>
-          <g class="crew-leg-right"><path d="M 2,4 L 3,11 L 6,11 L 5,4 Z" fill="#0f172a" /><path d="M 2,11 L 7,11 L 8,15 L 1,15 Z" fill="#1e293b" /></g>
-          <!-- Chaquetón Clase 3 Amarillo Neón con bandas dobles reflectantes -->
-          <path d="M -8,-6 L 8,-6 L 6,5 L -6,5 Z" fill="#eab308" stroke="#a16207" stroke-width="1" />
-          <line x1="-7" y1="-3" x2="7" y2="-3" stroke="#ffffff" stroke-width="1.5" />
-          <line x1="-6" y1="2" x2="6" y2="2" stroke="#ffffff" stroke-width="1.5" />
-          <circle cx="0" cy="-9" r="4.2" fill="#fed7aa" />
-          <!-- Casco rojo de protección con luz frontal estroboscópica -->
-          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#dc2626" stroke="#991b1b" stroke-width="1" />
-          <circle cx="0" cy="-12" r="1.2" fill="#ffffff" class="ptsa-tower-beacon" />
-          <!-- Señal oficial octogonal de ALTO / STOP y Linterna de Señales -->
-          <g transform="translate(7, -1)" style="display:${isWorking ? 'block' : 'none'};">
-            <!-- Disco de parada ferroviaria -->
-            <line x1="0" y1="6" x2="0" y2="-12" stroke="#94a3b8" stroke-width="1.5" />
-            <polygon points="-4,-16 4,-16 7,-13 7,-7 4,-4 -4,-4 -7,-7 -7,-13" fill="#dc2626" stroke="#ffffff" stroke-width="0.8" />
-            <text x="0" y="-8.5" fill="#ffffff" font-size="4" font-weight="900" text-anchor="middle">STOP</text>
-            <!-- Linterna de mano con haz estroboscópico rojo/verde -->
-            <rect x="-8" y="2" width="4" height="6" rx="0.8" fill="#1e293b" />
-            <circle cx="-6" cy="7" r="2" fill="#ef4444" class="flagman-lantern-strobe" />
+          <g class="crew-leg-left"><path d="M -4,4 L -4,11 L -1,11 L -1,4 Z" fill="#1e293b" /><path d="M -5,11 L 0,11 L 0,15 L -6,15 Z" fill="#451a03" /></g>
+          <g class="crew-leg-right"><path d="M 1,4 L 1,11 L 4,11 L 4,4 Z" fill="#1e293b" /><path d="M 0,11 L 5,11 L 5,15 L -1,15 Z" fill="#451a03" /></g>
+          <path d="M -7,-6 L 7,-6 L 6,4 L -6,4 Z" fill="#ff6b1a" stroke="#9a3412" stroke-width="1.3" />
+          <line x1="-6" y1="-3" x2="6" y2="-3" stroke="#f8fafc" stroke-width="1.6" />
+          <line x1="-5" y1="1" x2="5" y2="1" stroke="#f8fafc" stroke-width="1.6" />
+          <circle cx="0" cy="-9" r="4.2" fill="#fde68a" />
+          <path d="M -5.5,-11 Q 0,-17 5.5,-11 Z" fill="#dc2626" stroke="#991b1b" stroke-width="1.2" />
+          <circle cx="0" cy="-13" r="1.3" fill="#f8fafc" />
+          <g class="crew-tamper-tool" style="display:${isWorking ? 'block' : 'none'};">
+            <line x1="5" y1="2" x2="5" y2="-12" stroke="#94a3b8" stroke-width="1.8" />
+            <polygon points="1,-16 9,-16 12,-13 12,-7 9,-4 1,-4 -2,-7 -2,-13" fill="#dc2626" stroke="#f8fafc" stroke-width="1" />
+            <rect x="-3" y="0" width="4" height="6" rx="0.8" fill="#1e293b" />
+            <circle cx="-1" cy="5" r="1.8" fill="#ef4444" class="crew-work-sparks" />
+          </g>
+          <g class="crew-patrol-tool" style="display:${isWorking ? 'none' : 'block'};">
+            <line x1="4" y1="2" x2="4" y2="-10" stroke="#991b1b" stroke-width="2.2" />
+            <rect x="2" y="-14" width="4" height="6" rx="1" fill="#dc2626" />
+          </g>
+          <g class="crew-safe-thumbsup" style="display:none;">
+            <circle cx="5" cy="-7" r="3.5" fill="#fde68a" stroke="#ca8a04" stroke-width="1" />
+            <path d="M 4,-8 L 6,-10 L 6,-6 Z" fill="#f97316" />
           </g>
         </g>`;
   }
@@ -2357,49 +2460,50 @@ function renderVehicleVisualModel(veh, modelIndex) {
   
   switch(mIdx) {
     case 0:
-      // MODELO 0: DRESINA DE CATENARIA PLASSER & THEURER MTW 100 (Torreta tijera, tambor de hilo de cobre y pantógrafo)
+      // MODELO 0: DRESINA DE CATENARIA PLASSER & THEURER MTW 100
       return `
         <!-- Chasis ferroviario pesado de acero -->
         <rect x="-52" y="2" width="104" height="10" rx="2" fill="#0f172a" stroke="#334155" stroke-width="1.2" />
         <rect x="-50" y="4" width="100" height="5" fill="url(#hazard-stripes)" rx="1" />
-        <!-- Bogies con ruedas ferroviarias con pestañas y suspensión de ballesta -->
-        <g transform="translate(32, 13)"><circle cx="0" cy="0" r="5.5" fill="#1e293b" stroke="#cbd5e1" stroke-width="1.5" /><g class="veh-wheel-spoke"><line x1="-4" y1="0" x2="4" y2="0" stroke="#94a3b8" stroke-width="1.2" /><line x1="0" y1="-4" x2="0" y2="4" stroke="#94a3b8" stroke-width="1.2" /></g><circle cx="0" cy="0" r="2" fill="#64748b" /></g>
-        <g transform="translate(-32, 13)"><circle cx="0" cy="0" r="5.5" fill="#1e293b" stroke="#cbd5e1" stroke-width="1.5" /><g class="veh-wheel-spoke"><line x1="-4" y1="0" x2="4" y2="0" stroke="#94a3b8" stroke-width="1.2" /><line x1="0" y1="-4" x2="0" y2="4" stroke="#94a3b8" stroke-width="1.2" /></g><circle cx="0" cy="0" r="2" fill="#64748b" /></g>
+        <g transform="translate(34, 13)"><circle cx="0" cy="0" r="5.5" fill="#1e293b" stroke="#cbd5e1" stroke-width="1.5" /><g class="veh-wheel-spoke"><line x1="-4" y1="0" x2="4" y2="0" stroke="#94a3b8" stroke-width="1.5" /><line x1="0" y1="-4" x2="0" y2="4" stroke="#94a3b8" stroke-width="1.5" /></g><circle cx="0" cy="0" r="2" fill="#64748b" /></g>
+        <g transform="translate(-34, 13)"><circle cx="0" cy="0" r="5.5" fill="#1e293b" stroke="#cbd5e1" stroke-width="1.5" /><g class="veh-wheel-spoke"><line x1="-4" y1="0" x2="4" y2="0" stroke="#94a3b8" stroke-width="1.5" /><line x1="0" y1="-4" x2="0" y2="4" stroke="#94a3b8" stroke-width="1.5" /></g><circle cx="0" cy="0" r="2" fill="#64748b" /></g>
         <!-- Batea trasera con tambor bobinador de hilo de contacto de cobre 1500V -->
         <rect x="-50" y="-3" width="54" height="5" fill="#1e293b" />
-        <line x1="-50" y1="-9" x2="4" y2="-9" stroke="#facc15" stroke-width="1.2" />
-        <circle cx="-24" cy="-6" r="5.5" fill="#b45309" stroke="#78350f" stroke-width="1" />
+        <circle cx="-24" cy="-6" r="5.5" fill="#b45309" stroke="#78350f" stroke-width="1.2" />
         <circle cx="-24" cy="-6" r="2" fill="#fde68a" />
-        <rect x="-46" y="-8.5" width="12" height="6" rx="1" fill="#0f172a" stroke="#facc15" stroke-width="0.8" />
+        <rect x="-46" y="-8.5" width="12" height="6" rx="1" fill="#0f172a" stroke="#38bdf8" stroke-width="1" />
         <!-- Torreta elevadora de tijera hidráulica con barandilla perimetral -->
         <g class="veh-scissor-lift-group">
           <line x1="-12" y1="-9" x2="-4" y2="-19" stroke="#cbd5e1" stroke-width="1.6" />
           <line x1="-4" y1="-9" x2="-12" y2="-19" stroke="#cbd5e1" stroke-width="1.6" />
-          <rect x="-15" y="-23" width="16" height="4" rx="0.8" fill="#eab308" stroke="#a16207" stroke-width="0.8" />
+          <rect x="-15" y="-23" width="16" height="4" rx="0.8" fill="#0284c7" stroke="#0369a1" stroke-width="1" />
           <line x1="-15" y1="-27" x2="1" y2="-27" stroke="#ffffff" stroke-width="1.2" />
           <line x1="-15" y1="-27" x2="-15" y2="-23" stroke="#ffffff" stroke-width="1.2" />
           <line x1="1" y1="-27" x2="1" y2="-23" stroke="#ffffff" stroke-width="1.2" />
         </g>
-        <!-- Cabina frontal panorámica aerodinámica Plasser amarilla -->
-        <path d="M 4,-14 L 14,-23 L 44,-23 L 49,-14 L 49,2 L 4,2 Z" fill="#f59e0b" stroke="#d97706" stroke-width="1.3" />
+        <!-- Cabina derecha -->
+        <path d="M 4,-14 L 14,-23 L 44,-23 L 49,-14 L 49,2 L 4,2 Z" fill="#0284c7" stroke="#0369a1" stroke-width="1.4" />
         <polygon points="26,-21 43,-21 46,-12 26,-12" fill="url(#veh-glass-polar)" />
         <rect x="15" y="-25.5" width="6" height="3" rx="0.8" fill="#f59e0b" class="beacon-strobe-a" />
-        <rect x="37" y="-25.5" width="6" height="3" rx="0.8" fill="#f59e0b" class="beacon-strobe-b" />`;
+        <rect x="46" y="-8" width="5" height="3" rx="0.8" fill="#fef08a" />
+        <rect x="46" y="-3" width="5" height="3" rx="0.8" fill="#fef08a" />
+        <rect x="15" y="-25.5" width="6" height="3" rx="0.8" fill="#38bdf8" class="beacon-strobe-a" />
+        <rect x="37" y="-25.5" width="6" height="3" rx="0.8" fill="#facc15" class="beacon-strobe-b" />`;
 
     case 1:
-      // MODELO 1: CAMIÓN BIVIAL TOLVA DE BALASTO MAN 6x4 (Volquete basculante con granito triturado)
+      // MODELO 1: CAMIÓN BIVIAL TOLVA DE BALASTO
       return `
         <!-- Chasis industrial de camión con ruedas de carretera y guía ferroviaria -->
         <rect x="-56" y="2" width="112" height="10" rx="2" fill="#0f172a" stroke="#334155" stroke-width="1.2" />
-        <rect x="-54" y="4" width="108" height="5" fill="#ea580c" />
+        <rect x="-54" y="4" width="108" height="5" fill="url(#hazard-stripes)" rx="1" />
         <g transform="translate(34, 13)"><circle cx="0" cy="0" r="5.5" fill="#1e293b" stroke="#cbd5e1" stroke-width="1.5" /><g class="veh-wheel-spoke"><line x1="-4" y1="0" x2="4" y2="0" stroke="#94a3b8" stroke-width="1.2" /><line x1="0" y1="-4" x2="0" y2="4" stroke="#94a3b8" stroke-width="1.2" /></g><circle cx="0" cy="0" r="2" fill="#64748b" /></g>
         <g transform="translate(-34, 13)"><circle cx="0" cy="0" r="5.5" fill="#1e293b" stroke="#cbd5e1" stroke-width="1.5" /><g class="veh-wheel-spoke"><line x1="-4" y1="0" x2="4" y2="0" stroke="#94a3b8" stroke-width="1.2" /><line x1="0" y1="-4" x2="0" y2="4" stroke="#94a3b8" stroke-width="1.2" /></g><circle cx="0" cy="0" r="2" fill="#64748b" /></g>
         <!-- Tolva volquete basculante trasera de alta capacidad -->
-        <polygon points="-54,-13 -4,-13 2,-2 -54,-2" fill="#9a3412" stroke="#7c2d12" stroke-width="1.2" />
+        <polygon points="-54,-13 -4,-13 2,-2 -54,-2" fill="#1e293b" stroke="#334155" stroke-width="1.2" />
         <!-- Carga de piedra balasto de granito visible -->
         <ellipse cx="-26" cy="-13" rx="20" ry="3.5" fill="#64748b" stroke="#475569" stroke-width="0.8" />
         <!-- Cabina alta de camión MAN TGS naranja con visera y snorkel de admisión -->
-        <path d="M 2,-14 L 10,-26 L 48,-26 L 54,-14 L 54,2 L 2,2 Z" fill="#ea580c" stroke="#c2410c" stroke-width="1.4" />
+        <path d="M 2,-14 L 10,-26 L 48,-26 L 54,-14 L 54,2 L 2,2 Z" fill="#0284c7" stroke="#0369a1" stroke-width="1.4" />
         <!-- Calandra frontal imponente con radiador negro y faros dobles -->
         <rect x="46" y="-12" width="7.5" height="13" fill="#0f172a" rx="1" />
         <line x1="47" y1="-10" x2="52" y2="-10" stroke="#cbd5e1" stroke-width="0.9" />
@@ -2409,7 +2513,7 @@ function renderVehicleVisualModel(veh, modelIndex) {
         <!-- Tubo de escape vertical con deflector de lluvia -->
         <line x1="5" y1="-2" x2="5" y2="-28" stroke="#475569" stroke-width="2.2" />
         <line x1="3" y1="-28" x2="7" y2="-28" stroke="#94a3b8" stroke-width="1.5" class="veh-exhaust-flapper" />
-        <rect x="22" y="-28.5" width="22" height="3" rx="1" fill="#facc15" class="beacon-strobe-a" />`;
+        <rect x="22" y="-28.5" width="22" height="3" rx="1" fill="#38bdf8" class="beacon-strobe-a" />`;
 
     case 2:
       // MODELO 2: FURGÓN BIVIAL TALLER DE ENCLAVAMIENTOS Y SEÑALIZACIÓN (Persianas enrollables y antena satelital)
@@ -2453,7 +2557,8 @@ function renderVehicleVisualModel(veh, modelIndex) {
           <!-- Cesta amplia con barandilla y focos de trabajo -->
           <rect x="-46" y="-28" width="28" height="5" rx="1" fill="#16a34a" stroke="#15803d" stroke-width="1" />
           <line x1="-46" y1="-33" x2="-18" y2="-33" stroke="#ffffff" stroke-width="1.4" />
-          <circle cx="-18" cy="-33" r="2.2" fill="#facc15" filter="drop-shadow(0 0 4px #facc15)" />
+          <circle cx="-18" cy="-33" r="2.2" fill="#facc15" />
+          <circle cx="-18" cy="-33" r="4" fill="#facc15" opacity="0.3" />
         </g>
         <!-- Cabina aerodinámica en verde esmeralda y blanco corporativo -->
         <path d="M 6,-14 L 14,-22 L 44,-22 L 48,-13 L 48,2 L 6,2 Z" fill="#ffffff" stroke="#16a34a" stroke-width="1.4" />
@@ -2540,7 +2645,8 @@ function renderVehicleVisualModel(veh, modelIndex) {
         <path d="M -46,-8 L -14,-8 L -14,2 L -46,2 Z" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.2" />
         <!-- Barra tubular antivuelco con focos de largo alcance -->
         <path d="M -16,2 L -16,-17 L -11,-17 L -11,2" stroke="#0f172a" stroke-width="2" fill="none" />
-        <circle cx="-13.5" cy="-19" r="2" fill="#facc15" filter="drop-shadow(0 0 3px #facc15)" />
+        <circle cx="-13.5" cy="-19" r="2" fill="#facc15" />
+        <circle cx="-13.5" cy="-19" r="3.5" fill="#facc15" opacity="0.3" />
         <!-- Rueda de repuesto y bidón de combustible en la tolva -->
         <circle cx="-32" cy="-4" r="4.5" fill="#1e293b" stroke="#64748b" stroke-width="1" />
         <!-- Cabina doble blanca de pickup con defensa frontal -->
@@ -2600,10 +2706,60 @@ function renderVehicleVisualModel(veh, modelIndex) {
           <line x1="-46" y1="-6" x2="-26" y2="-6" stroke="#94a3b8" stroke-width="2.5" />
         </g>
         <!-- Cabina de camión pesada amarilla con spoiler superior -->
-        <path d="M 6,-14 L 14,-23 L 44,-23 L 48,-14 L 48,2 L 6,2 Z" fill="#f59e0b" stroke="#d97706" stroke-width="1.3" />
+        <path d="M 6,-14 L 14,-23 L 44,-23 L 48,-14 L 48,2 L 6,2 Z" fill="#f1f5f9" stroke="#0284c7" stroke-width="1.3" />
         <polygon points="26,-21 42,-21 45,-12 26,-12" fill="url(#veh-glass-polar)" />
         <rect x="25" y="-25.5" width="14" height="3" rx="1" fill="#facc15" class="beacon-strobe-a" />`;
   }
+}
+
+const PALETA_GRUPOS_PERMISO = ['#22d3ee', '#f472b6', '#a3e635', '#c084fc', '#fb923c', '#38bdf8', '#f43f5e', '#facc15'];
+
+function grupoPermisoKey(c) {
+  return c && c.ot && c.type === 'crew' ? `${c.ot}|${c.responsible}` : null;
+}
+
+function colorGrupoPermiso(c) {
+  const key = grupoPermisoKey(c);
+  if (!key) return null;
+  const claves = [...new Set(appState.crews.map(grupoPermisoKey).filter(Boolean))];
+  return PALETA_GRUPOS_PERMISO[claves.indexOf(key) % PALETA_GRUPOS_PERMISO.length];
+}
+
+// Cuadrillas con el mismo permiso y responsable en la misma zona (o ambas vías) comparten
+// el estado del primero de su grupo: avanzan, trabajan y hacen emotes juntas.
+function asignarSeguidoresDeGrupo() {
+  const primero = {};
+  appState.crews.forEach(c => {
+    c.seguidorDe = null;
+    const key = grupoPermisoKey(c);
+    if (!key) return;
+    const lider = primero[key];
+    if (!lider) { primero[key] = c; return; }
+    if (c.xMin === lider.xMin && c.xMax === lider.xMax) c.seguidorDe = lider.id;
+  });
+}
+
+function copiarEstadoSeguidor(seguidor, lider) {
+  seguidor.x = lider.x;
+  seguidor.dir = lider.dir;
+  seguidor.isWorking = lider.isWorking;
+  seguidor.workTimer = lider.workTimer;
+  seguidor.workCountdown = lider.workCountdown;
+  seguidor.inSafeZone = lider.inSafeZone;
+  // Fase de paso y fundido caminar/trabajar: copiarlos del líder mantiene al grupo
+  // con las piernas perfectamente sincronizadas (comparten x en cada frame).
+  seguidor.walkPhase = lider.walkPhase;
+  seguidor._swing = lider._swing;
+}
+
+function sincronizarBurbujaSeguidor(seguidor, lider) {
+  const bL = document.getElementById(`retro-bubble-${lider.id}`);
+  const bF = document.getElementById(`retro-bubble-${seguidor.id}`);
+  const sL = document.getElementById(`bubble-slot-${lider.id}`);
+  const sF = document.getElementById(`bubble-slot-${seguidor.id}`);
+  if (!bL || !bF || !sL || !sF) return;
+  if (bF.style.display !== bL.style.display) bF.style.display = bL.style.display;
+  if (sF.innerHTML !== sL.innerHTML) sF.innerHTML = sL.innerHTML;
 }
 
 function renderEntitiesDOM() {
@@ -2641,15 +2797,20 @@ function renderEntitiesDOM() {
     g.setAttribute("data-id", crew.id);
     
     g.innerHTML = `
+      <rect class="token-hitbox" x="-30" y="-40" width="60" height="60" fill="transparent" style="pointer-events:all; cursor:pointer;" />
+      ${colorGrupoPermiso(crew) ? `<ellipse cx="0" cy="15" rx="22" ry="5.5" fill="none" stroke="${colorGrupoPermiso(crew)}" stroke-width="2.2" stroke-dasharray="6 3" style="pointer-events:none;" />` : ''}
       <!-- Sombra de contacto sobre el riel/balasto (Grounded Shadow) -->
-      <ellipse cx="0" cy="15" rx="14" ry="3.5" fill="rgba(0, 0, 0, 0.55)" style="pointer-events:none;" />
-      
+      <ellipse cx="0" cy="15.5" rx="13" ry="3" fill="rgba(2, 6, 23, 0.82)" style="pointer-events:none;" />
+
       <!-- Resplandor sutil de estado en la base -->
       <ellipse cx="0" cy="15" rx="18" ry="4.5" fill="${crew.inSafeZone ? "rgba(16, 185, 129, 0.35)" : "rgba(245, 158, 11, 0.28)"}" style="pointer-events:none;" />
-      
-      <!-- Haz de linterna frontal tactica sutil (LED Headlamp) -->
-      <polygon class="crew-flashlight-beam" points="4,-10 32,-18 32,-2" fill="rgba(254, 240, 138, 0.22)" style="pointer-events:none; display:${crew.inSafeZone ? "none" : "block"};" />
-      
+
+      <!-- Haz de linterna frontal táctica (LED Headlamp) -->
+      <g class="crew-flashlight-beam" style="pointer-events:none; display:${crew.inSafeZone ? "none" : "block"};">
+        <polygon points="4,-10 34,-18 34,-2" fill="url(#crew-beam-grad)" />
+        <ellipse cx="26" cy="14" rx="8" ry="2" fill="rgba(254, 240, 138, 0.25)" />
+      </g>
+
       <!-- Conos de seguridad compactos en extremos de zona si está trabajando -->
       <g class="crew-safety-cones" style="display:${crew.isWorking ? "block" : "none"}; pointer-events:none;">
         <g transform="translate(-24, 7)">
@@ -2663,22 +2824,23 @@ function renderEntitiesDOM() {
           <rect x="-5" y="6" width="10" height="1.5" rx="0.4" fill="#0f172a" />
         </g>
       </g>
-      
+
       <!-- Visual de Cuadrilla Diferenciada (10 Modelos Únicos con Atuendos y Equipos Reales) -->
       <g class="crew-visual" style="pointer-events:none;">
         ${renderCrewVisualModel(crew, (parseInt((crew.id || '').replace(/\D/g, ''), 10) || 0))}
       </g>
-      
-      <!-- Globo de Emote Retro / Acción Especial de Videojuego (Dragon Ball, Pokémon, Pacman, Navidad) -->
-      <g class="crew-retro-bubble" id="retro-bubble-${crew.id}" style="display:none; pointer-events:none;" transform="translate(0, -56)">
+
+      <!-- Globo de Emote Retro / Acción Especial de Videojuego -->
+      <g class="crew-retro-bubble" id="retro-bubble-${crew.id}" style="display:none; pointer-events:none;" transform="translate(0, -60)">
         <path d="M -26,-22 L 26,-22 Q 30,-22 30,-18 L 30,6 Q 30,10 26,10 L 4,10 L 0,16 L -4,10 L -26,10 Q -30,10 -30,6 L -30,-18 Q -30,-22 -26,-22 Z" fill="#090d16" stroke="#f59e0b" stroke-width="1.8" />
         <g class="bubble-content-slot" id="bubble-slot-${crew.id}"></g>
       </g>
 
       <!-- Cartela con Datos y Estado -->
-      <rect x="-70" y="-36" width="140" height="17" rx="3.5" fill="#0a121e" stroke="${crew.inSafeZone ? "#10b981" : "#f59e0b"}" stroke-width="1.3" style="pointer-events:none;" />
-      <text class="crew-status-label" x="0" y="-24" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle" style="pointer-events:none;">
-        ${crew.inSafeZone ? "🛡️ " + crew.responsible.slice(0, 11) + " [Andén]" : "👷 " + crew.responsible.slice(0, 11) + " (" + crew.count + "p)"}
+      <rect x="-72" y="-38" width="144" height="18" rx="4" fill="#070d17" fill-opacity="0.94" stroke="${crew.inSafeZone ? "#10b981" : "#f59e0b"}" stroke-width="1.4" style="pointer-events:none;" />
+      ${colorGrupoPermiso(crew) ? `<rect x="-72" y="-38" width="6" height="18" rx="2" fill="${colorGrupoPermiso(crew)}" style="pointer-events:none;" />` : ''}
+      <text class="crew-status-label" x="0" y="-25" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle" style="pointer-events:none;">
+        ${crew.inSafeZone ? "🛡️ " + crew.responsible.slice(0, 11) + " [Andén]" : "👷 " + crew.responsible.slice(0, 11) + " (" + (crew.count || "?") + "p)"}
       </text>
     `;
     
@@ -2697,6 +2859,7 @@ function renderEntitiesDOM() {
           
           appState.reassigningEntity = crew;
           appState.isDraggingPegman = true;
+          document.body.classList.add('is-dragging-token');
           appState.draggedType = 'crew';
           appState.hoveredVia = crew.via;
           appState.draggedZonesSet.clear();
@@ -2727,11 +2890,11 @@ function renderEntitiesDOM() {
       window.addEventListener("mouseup", onUp);
     });
 
-        // Clic derecho para modificar tramo directamente como la primera vez
+        // Clic derecho para menú contextual con opciones Editar / Eliminar / Reubicar
     g.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      startReassigningToken(crew, e.clientX, e.clientY);
+      showTokenContextMenu(crew, e.clientX, e.clientY);
     });
         // Doble clic para reubicar / mover cuadrilla a otra zona
     g.addEventListener("dblclick", (e) => {
@@ -2754,7 +2917,6 @@ function renderEntitiesDOM() {
       e.stopPropagation();
       if (crewMoved) return;
       playSound("coin");
-      openQuickEditForToken(crew, e.clientX, e.clientY);
     });
     
     layer.appendChild(g);
@@ -2813,6 +2975,7 @@ function renderEntitiesDOM() {
     g.setAttribute("data-id", veh.id);
     
     g.innerHTML = `
+      <rect class="token-hitbox" x="-56" y="-40" width="120" height="60" fill="transparent" style="pointer-events:all; cursor:pointer;" />
       <!-- Sombra de contacto ferroviaria (Grounded Track Shadow) -->
       <ellipse cx="0" cy="16" rx="52" ry="4.5" fill="rgba(0, 0, 0, 0.65)" style="pointer-events:none;" />
       
@@ -2849,6 +3012,7 @@ function renderEntitiesDOM() {
           
           appState.reassigningEntity = veh;
           appState.isDraggingPegman = true;
+          document.body.classList.add('is-dragging-token');
           appState.draggedType = 'vehicle';
           appState.hoveredVia = veh.via;
           appState.draggedZonesSet.clear();
@@ -2879,11 +3043,11 @@ function renderEntitiesDOM() {
       window.addEventListener("mouseup", onUp);
     });
 
-        // Clic derecho para modificar tramo directamente como la primera vez
+        // Clic derecho para menú contextual con opciones Editar / Eliminar / Reubicar
     g.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      startReassigningToken(veh, e.clientX, e.clientY);
+      showTokenContextMenu(veh, e.clientX, e.clientY);
     });
         // Doble clic para reubicar / mover vehículo a otra zona
     g.addEventListener("dblclick", (e) => {
@@ -2896,7 +3060,6 @@ function renderEntitiesDOM() {
       if (vehMoved) return;
       playSound("horn");
       showToast(`🚜 ¡Honk-Honk! Bocina de ${veh.vehicleType} activada.`, "info");
-      openQuickEditForToken(veh, e.clientX, e.clientY);
     });
     
     layer.appendChild(g);
@@ -2907,6 +3070,27 @@ function renderEntitiesDOM() {
 // 13. MOTOR DE ANIMACIÓN Y GESTOS DE VIDEOJUEGO (DESACOPLADO A 60 FPS)
 // ------------------------------------------------------------------------------
 let lastAnimTimestamp = performance.now();
+
+// Factor de amplitud global: con prefers-reduced-motion se atenúa el movimiento
+// decorativo (bob, piernas, chug) en lugar de congelar al personal sobre la vía.
+const AMP_MOVIMIENTO = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0.3 : 1;
+
+// Cache por ficha de los nodos .crew-work-sparks (NodeList estático). Se invalida
+// sola si renderEntitiesDOM() reconstruye el token (cambia la referencia al <g>).
+function nodosSparksDeCrew(crew, el) {
+  const cache = crew._sparksCache;
+  if (cache && cache.el === el) return cache.nodes;
+  const nodes = el.querySelectorAll(".crew-work-sparks");
+  crew._sparksCache = { el, nodes };
+  return nodes;
+}
+
+// Apaga las chispas una sola vez (_sparksLit evita reescribir opacity cada frame).
+function apagarSparksDeCrew(crew, el) {
+  if (!crew._sparksLit) return;
+  crew._sparksLit = false;
+  nodosSparksDeCrew(crew, el).forEach(sp => { sp.style.opacity = "0"; });
+}
 
 function initAnimationEngine() {
   function tick(timestamp) {
@@ -2928,31 +3112,38 @@ function initAnimationEngine() {
     const semanticScale = 0.65 + Math.pow(zoomFactor, 0.85) * 1.55;
     
     // 1. Actualizar animacion de Cuadrillas a pie
+    asignarSeguidoresDeGrupo();
     appState.crews.forEach(crew => {
       const minX = (crew.xMin || 100) + 25;
       const maxX = (crew.xMax || 300) - 25;
+      const liderGrupo = crew.seguidorDe ? appState.crews.find(c => c.id === crew.seguidorDe) : null;
+      if (liderGrupo) copiarEstadoSeguidor(crew, liderGrupo);
       
       if (crew.inSafeZone) {
         crew.isWorking = false;
         const el = document.getElementById(`token-${crew.id}`);
         if (el) {
           const ySafe = crew.via === "V1" ? 370 : 172;
-          el.setAttribute("transform", `translate(${crew.x.toFixed(1)}, ${ySafe.toFixed(1)}) scale(${semanticScale.toFixed(3)})`);
+          const tSafe = `translate(${crew.x.toFixed(1)}, ${ySafe.toFixed(1)}) scale(${semanticScale.toFixed(3)})`;
+          if (el.getAttribute("transform") !== tSafe) el.setAttribute("transform", tSafe);
           
           const label = el.querySelector(".crew-status-label");
           if (label) {
-            label.textContent = `🛡️ ${crew.responsible} [Andén Seguro]`;
+            const textoSafe = `🛡️ ${crew.responsible} [Andén Seguro]`;
+            if (label.textContent !== textoSafe) label.textContent = textoSafe;
           }
-          const sparks = el.querySelector(".crew-work-sparks");
-          if (sparks) sparks.style.opacity = "0";
-          const cones = el.querySelector(".crew-safety-cones");
-          if (cones) cones.style.display = "none";
-          const thumbs = el.querySelector(".crew-safe-thumbsup");
-          if (thumbs) thumbs.style.display = "block";
-          const tamper = el.querySelector(".crew-tamper-tool");
-          if (tamper) tamper.style.display = "none";
-          const patrol = el.querySelector(".crew-patrol-tool");
-          if (patrol) patrol.style.display = "none";
+          apagarSparksDeCrew(crew, el);
+          if (crew._toolMode !== "safe") {
+            crew._toolMode = "safe";
+            const cones = el.querySelector(".crew-safety-cones");
+            if (cones) cones.style.display = "none";
+            const thumbs = el.querySelector(".crew-safe-thumbsup");
+            if (thumbs) thumbs.style.display = "block";
+            const tamper = el.querySelector(".crew-tamper-tool");
+            if (tamper) tamper.style.display = "none";
+            const patrol = el.querySelector(".crew-patrol-tool");
+            if (patrol) patrol.style.display = "none";
+          }
         }
         return;
       }
@@ -2970,7 +3161,9 @@ function initAnimationEngine() {
         curMaxX = 3430;
       }
       
-      if (crew.isWorking) {
+      if (liderGrupo) {
+        sincronizarBurbujaSeguidor(crew, liderGrupo);
+      } else if (crew.isWorking) {
         crew.workTimer -= dt;
         crew.emoteCooldown = (crew.emoteCooldown || (1.5 + Math.random() * 3.5)) - dt;
         
@@ -3054,6 +3247,19 @@ function initAnimationEngine() {
         }
       }
       
+      // --- Suavizado de transiciones caminar <-> trabajar (independiente del framerate).
+      // _swing (0..1) actúa de fundido: amortigua piernas y bob al detenerse, sin el
+      // salto seco de antes al conmutar isWorking. walkPhase acumula fase con dt, así
+      // la cadencia queda ligada a la velocidad real sobre la vía (time-based, no por frame).
+      const targetSwing = crew.isWorking ? 0 : 1;
+      if (crew._swing === undefined) crew._swing = targetSwing;
+      if (crew.walkPhase === undefined) crew.walkPhase = Math.random() * Math.PI * 2;
+      crew._swing += (targetSwing - crew._swing) * (1 - Math.exp(-10 * dt));
+      if (!crew.isWorking) {
+        crew.walkPhase += dt * ((Math.abs(crew.speed) || 15) / 14) * Math.PI * 2;
+      }
+      const swing = crew._swing;
+      
       const el = document.getElementById(`token-${crew.id}`);
       if (el) {
         let yBase;
@@ -3065,68 +3271,88 @@ function initAnimationEngine() {
           yBase = crew.via === "V1" ? 330 : 220;
         }
         
-        const bob = crew.isWorking ? Math.sin(timestamp / 200) * 1.4 : Math.sin(timestamp / 140) * 2.5;
-        el.setAttribute("transform", `translate(${crew.x.toFixed(1)}, ${(yBase + bob).toFixed(1)}) scale(${semanticScale.toFixed(3)})`);
+        // Bob vertical sincronizado con el paso (2 apoyos por ciclo, máx 1.2px al caminar);
+        // pulso leve en faena. Fundido por swing para no dar saltos al conmutar estado.
+        const bobWalk = -Math.cos(crew.walkPhase * 2) * 1.2 * swing * AMP_MOVIMIENTO;
+        const bobWork = Math.sin(timestamp / 210) * 1.0 * (1 - swing) * AMP_MOVIMIENTO;
+        el.setAttribute("transform", `translate(${crew.x.toFixed(1)}, ${(yBase + bobWalk + bobWork).toFixed(1)}) scale(${semanticScale.toFixed(3)})`);
         
         // Squash & stretch de videojuego para dar peso y juego al personaje
+        // (el caminar se liga a walkPhase: estira al alzar el cuerpo, comprime al apoyar)
         const visual = el.querySelector(".crew-visual");
         if (visual) {
-          const squashY = crew.isWorking ? (1 + Math.sin(timestamp / 120) * 0.035) : (1 + Math.sin(timestamp / 75) * 0.075);
+          const squashY = 1 + Math.sin(timestamp / 120) * 0.035 * (1 - swing)
+                        - Math.cos(crew.walkPhase * 2) * 0.035 * swing;
           const squashX = (crew.dir || 1) * (1 / squashY);
           visual.setAttribute("transform", `scale(${squashX.toFixed(3)}, ${squashY.toFixed(3)})`);
         }
         
+        // Linterna: el atributo se escribe solo si cambia el sentido de la marcha
+        // (la comprobación con getAttribute cubre también el re-render del token).
         const beam = el.querySelector(".crew-flashlight-beam");
         if (beam) {
-          beam.setAttribute("transform", `scale(${crew.dir || 1}, 1)`);
-          beam.style.display = "block";
-        }
-        
-        const sparks = el.querySelector(".crew-work-sparks");
-        if (sparks) {
-          sparks.style.opacity = crew.isWorking ? "0.95" : "0";
-        }
-        
-        const cones = el.querySelector(".crew-safety-cones");
-        if (cones) {
-          cones.style.display = crew.isWorking ? "block" : "none";
-        }
-        
-        const tamper = el.querySelector(".crew-tamper-tool");
-        if (tamper) {
-          tamper.style.display = crew.isWorking ? "block" : "none";
-        }
-        
-        const patrol = el.querySelector(".crew-patrol-tool");
-        if (patrol) {
-          patrol.style.display = crew.isWorking ? "none" : "block";
-        }
-        
-        const thumbs = el.querySelector(".crew-safe-thumbsup");
-        if (thumbs) {
-          thumbs.style.display = "none";
-        }
-
-        // Kinemática procedimental de videojuego: Marcha de piernas realista (walk-cycle)
-        const legL = el.querySelector(".crew-leg-left");
-        const legR = el.querySelector(".crew-leg-right");
-        if (legL && legR) {
-          if (crew.isWorking) {
-            legL.setAttribute("transform", "rotate(0)");
-            legR.setAttribute("transform", "rotate(0)");
-          } else {
-            const legAngle = Math.sin(timestamp / 75) * 22 * (crew.dir || 1);
-            legL.setAttribute("transform", `rotate(${legAngle.toFixed(1)}, -3, 4)`);
-            legR.setAttribute("transform", `rotate(${-legAngle.toFixed(1)}, 3, 4)`);
+          const escalaBeam = `scale(${crew.dir || 1}, 1)`;
+          if (crew._flashDir !== (crew.dir || 1) || beam.getAttribute("transform") !== escalaBeam) {
+            crew._flashDir = crew.dir || 1;
+            beam.setAttribute("transform", escalaBeam);
+          }
+          if (crew._flashOn !== true) {
+            crew._flashOn = true;
+            beam.style.display = "block";
           }
         }
-
-        // Retroceso dinámico y vibración de herramientas pesadas durante faena
-        const tamperTool = el.querySelector(".crew-tamper-tool");
-        if (tamperTool && crew.isWorking) {
-          const toolRecoil = Math.sin(timestamp / 30) * 1.8;
-          tamperTool.setAttribute("transform", `translate(0, ${toolRecoil.toFixed(1)})`);
+        
+        // Chispas: opacidad con pulso sinusoidal suave SOLO mientras trabaja (antes:
+        // un solo nodo con opacidad fija + parpadeo CSS brusco en todos). Cache por ficha.
+        if (crew.isWorking) {
+          const sparksNodos = nodosSparksDeCrew(crew, el);
+          const numSparks = sparksNodos.length;
+          if (AMP_MOVIMIENTO < 1) {
+            // prefers-reduced-motion: brillo casi constante, oscilación mínima
+            for (let i = 0; i < numSparks; i++) sparksNodos[i].style.opacity = "0.7";
+          } else {
+            for (let i = 0; i < numSparks; i++) {
+              const pulso = 0.3 + 0.6 * (0.5 + 0.5 * Math.sin(timestamp / 170 + i * 0.9));
+              sparksNodos[i].style.opacity = pulso.toFixed(3);
+            }
+          }
+          crew._sparksLit = true;
+        } else {
+          apagarSparksDeCrew(crew, el);
         }
+        
+        // Conmutación de herramientas trabajar <-> marchar dentro del bucle: los
+        // display se escriben UNA vez por cambio de estado (caché _toolMode), no por frame.
+        const modoHerramientas = crew.isWorking ? "work" : "walk";
+        if (crew._toolMode !== modoHerramientas) {
+          crew._toolMode = modoHerramientas;
+          const cones = el.querySelector(".crew-safety-cones");
+          if (cones) cones.style.display = modoHerramientas === "work" ? "block" : "none";
+          
+          const tamper = el.querySelector(".crew-tamper-tool");
+          if (tamper) tamper.style.display = modoHerramientas === "work" ? "block" : "none";
+          
+          const patrol = el.querySelector(".crew-patrol-tool");
+          if (patrol) patrol.style.display = modoHerramientas === "walk" ? "block" : "none";
+          
+          const thumbs = el.querySelector(".crew-safe-thumbsup");
+          if (thumbs) thumbs.style.display = "none";
+        }
+
+        // Kinemática procedimental: walk-cycle ligado a walkPhase y amortiguado por
+        // swing -> los pies se asientan sin salto al empezar a trabajar; quietas en faena.
+        const legL = el.querySelector(".crew-leg-left");
+        const legR = el.querySelector(".crew-leg-right");
+        if (legL && legR && (swing > 0.001 || crew._legsActive)) {
+          crew._legsActive = swing > 0.001;
+          const legAngle = Math.sin(crew.walkPhase) * 22 * (crew.dir || 1) * swing * AMP_MOVIMIENTO;
+          legL.setAttribute("transform", `rotate(${legAngle.toFixed(2)}, -3, 4)`);
+          legR.setAttribute("transform", `rotate(${(-legAngle).toFixed(2)}, 3, 4)`);
+        }
+
+        // La vibración fina de la herramienta la anima CSS (.crew-tamper-tool /
+        // tamperPercuss); escribirle aquí un transform sería ignorado porque la
+        // animación CSS tiene prioridad sobre el atributo (antes era un write fallido por frame).
         const flagEl = el.querySelector(".companion-flag");
         if (flagEl) {
           const flagSway = Math.sin(timestamp / 110) * 12;
@@ -3135,7 +3361,8 @@ function initAnimationEngine() {
         
         const label = el.querySelector(".crew-status-label");
         if (label) {
-          label.textContent = crew.isWorking ? `👷 ${crew.responsible} [Trabajando]` : `👷 ${crew.responsible} (${crew.count}p)`;
+          const textoLabel = crew.isWorking ? `👷 ${crew.responsible} [Trabajando]` : `👷 ${crew.responsible} (${crew.count || '?'}p)`;
+          if (label.textContent !== textoLabel) label.textContent = textoLabel;
         }
       }
     });
@@ -3159,7 +3386,13 @@ function initAnimationEngine() {
         curMaxX = 3425;
       }
       
-      veh.x += (veh.speed || 26) * (veh.dir || 1) * dt;
+      const velocidadVeh = veh.speed ?? 26;
+      veh.x += velocidadVeh * (veh.dir || 1) * dt;
+      // Fundido de movimiento: rumble/chug/squash solo existen mientras realmente rueda.
+      const enMarcha = Math.abs(velocidadVeh) > 0.01;
+      const objetivoBlend = enMarcha ? 1 : 0;
+      if (veh._moveBlend === undefined) veh._moveBlend = objetivoBlend;
+      veh._moveBlend += (objetivoBlend - veh._moveBlend) * (1 - Math.exp(-8 * dt));
       
       if (veh.x >= curMaxX) {
         veh.x = curMaxX;
@@ -3184,43 +3417,48 @@ function initAnimationEngine() {
           rotDeg = 0;
         }
         
-        const rumble = Math.sin(timestamp / 35) * 0.7;
-        el.setAttribute("transform", `translate(${veh.x.toFixed(1)}, ${(yBase + rumble).toFixed(1)}) scale(${semanticScale.toFixed(3)})`);
+        const blend = veh._moveBlend;
+        const rumble = Math.sin(timestamp / 35) * 0.7 * blend * AMP_MOVIMIENTO;
+        el.setAttribute("transform", `translate(${veh.x.toFixed(1)}, ${(yBase + rumble).toFixed(2)}) scale(${semanticScale.toFixed(3)})`);
         
-        // Chug-chug y cabeceo de suspensión del vehículo auxiliar
+        // Chug-chug y cabeceo de suspensión del vehículo auxiliar: translate/rotate
+        // mínimos añadidos al transform del visual y amortiguados por blend
+        // (cero balanceo si está detenida). Sin conflictos CSS desde la fix de veh-chug-vibe.
         const visual = el.querySelector(".veh-visual");
         if (visual) {
-          const squashY = 1 + Math.sin(timestamp / 90) * 0.025;
+          const chugY = Math.sin(timestamp / 95) * 0.55 * blend * AMP_MOVIMIENTO;
+          const cabeceo = Math.sin(timestamp / 160) * 0.8 * blend * AMP_MOVIMIENTO;
+          const squashY = 1 + Math.sin(timestamp / 90) * 0.025 * blend;
           const squashX = (veh.dir || 1) * (1 / squashY);
           const baseScale = `scale(${squashX.toFixed(3)}, ${squashY.toFixed(3)})`;
-          const baseRot = rotDeg !== 0 ? ` rotate(${rotDeg * (veh.dir || 1)})` : '';
-          visual.setAttribute("transform", `${baseScale}${baseRot}`);
+          const baseRot = rotDeg !== 0 ? ` rotate(${(rotDeg * (veh.dir || 1)).toFixed(2)})` : '';
+          visual.setAttribute("transform", `translate(0, ${chugY.toFixed(2)}) rotate(${cabeceo.toFixed(2)}) ${baseScale}${baseRot}`);
         }
         
+        // El haz solo se reescribe al cambiar de sentido (y una vez tras re-render):
+        // reasignar points/fill cada frame recomputa el gradiente y hace titilar el faro.
         const beam = el.querySelector(".headlight-beam");
         if (beam) {
-          if (veh.dir === -1) {
-            beam.setAttribute("points", "-48,-2 -135,-22 -135,16");
-            beam.setAttribute("fill", "url(#headlight-beam-west)");
-          } else {
-            beam.setAttribute("points", "48,-2 135,-22 135,16");
-            beam.setAttribute("fill", "url(#headlight-beam-east)");
+          const puntosBeam = veh.dir === -1 ? "-48,-2 -135,-22 -135,16" : "48,-2 135,-22 135,16";
+          if (veh._beamDir !== veh.dir || beam.getAttribute("points") !== puntosBeam) {
+            veh._beamDir = veh.dir;
+            beam.setAttribute("points", puntosBeam);
+            beam.setAttribute("fill", veh.dir === -1 ? "url(#headlight-beam-west)" : "url(#headlight-beam-east)");
           }
         }
 
-        // Rotación física de ruedas con radios según desplazamiento métrico sobre el riel
+        // Ruedas: solo se escriben cuando cambia el grado efectivo (y nada si está parada)
         const spokes = el.querySelectorAll(".veh-wheel-spoke");
-        if (spokes.length > 0) {
+        if (spokes.length > 0 && blend > 0.02) {
           const wheelDeg = ((veh.x * 14) % 360).toFixed(1);
-          spokes.forEach(sp => sp.setAttribute("transform", `rotate(${wheelDeg})`));
+          if (veh._wheelDeg !== wheelDeg) {
+            veh._wheelDeg = wheelDeg;
+            spokes.forEach(sp => sp.setAttribute("transform", `rotate(${wheelDeg})`));
+          }
         }
 
-        // Mariposa de escape con aleteo por presión de gases diesel
-        const flapper = el.querySelector(".veh-exhaust-flapper");
-        if (flapper) {
-          const flapAngle = (Math.sin(timestamp / 45) * 18 - 12).toFixed(1);
-          flapper.setAttribute("transform", `rotate(${flapAngle}, 5, -28)`);
-        }
+        // Mariposa de escape: aleteo por CSS (.veh-exhaust-flapper / flapperBounce);
+        // sin transform JS que la animación CSS pisaría de todos modos.
       }
     });
     
@@ -3246,7 +3484,7 @@ function showMultiCrewPopover(crews, clientX, clientY) {
     item.className = 'popover-crew-item';
     item.innerHTML = `
       <div style="display:flex; justify-content:space-between;">
-        <strong>#${idx + 1} ${c.responsible} (${c.count} pers)</strong>
+        <strong>#${idx + 1} ${c.responsible} (${c.count || '?'} pers)</strong>
         <span style="color:#38bdf8; font-weight:bold;">Radio: ${c.radio}</span>
       </div>
       <div>Empresa: ${c.company} | Ingreso: ${c.timeIn}</div>
@@ -3324,14 +3562,23 @@ function renderTable() {
     const msg = appState.activeTab === 'completed'
       ? '— No hay trabajos concluidos archivados en esta guardia —'
       : '— Vía Principal despejada o no hay registros que coincidan con la búsqueda —';
-    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:18px; color:#64748b;">${msg}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:18px; color:#64748b;">${msg}</td></tr>`;
     return;
   }
   
-  rows.forEach(item => {
+  const filas = agruparFilasTabla(rows);
+  filas.forEach(fila => {
+    const item = fila.base;
+    const items = fila.items;
     const tr = document.createElement('tr');
     const isCrew = item.type === 'crew' || item.category === 'crew';
     const isCompleted = item.isCompleted;
+    const vias = [...new Set(items.map(i => i.via))].sort();
+    const viaHtml = vias.map(v => `<span class="tag-badge ${v === 'V1' ? 'tag-via-1' : 'tag-via-2'}">${v}</span>`).join(' ');
+    const tramosHtml = items.length > 1 && new Set(items.map(i => i.zoneLabel)).size > 1
+      ? items.map(i => `<strong>${i.via}:</strong> ${i.zoneLabel}`).join('<br>')
+      : `<strong>${item.zoneLabel || 'Tramo asignado'}</strong>`;
+    const punto = isCrew && colorGrupoPermiso(item) ? ` <span style="color:${colorGrupoPermiso(item)}">●</span>` : '';
     
     tr.innerHTML = `
       <td>
@@ -3339,16 +3586,13 @@ function renderTable() {
           ${isCompleted ? '✔ Concluido' : (isCrew ? (item.inSafeZone ? '🛡️ En Andén' : '👷 Cuadrilla') : '🚜 Vehículo')}
         </span>
       </td>
-      <td><strong>${isCrew ? item.responsible : item.vehicleType}</strong></td>
+      <td><strong>${isCrew ? item.responsible : item.vehicleType}</strong>${punto}</td>
+      <td><strong style="color:#fde68a;">${item.ot || '—'}</strong></td>
       <td>${item.company || (isCrew ? 'Mantenimiento Vía' : 'Vía y Catenaria')}</td>
-      <td>
-        <span class="tag-badge ${item.via === 'V1' ? 'tag-via-1' : 'tag-via-2'}">
-          ${item.via}
-        </span>
-      </td>
-      <td><strong>${item.zoneLabel || 'Tramo asignado'}</strong></td>
+      <td>${viaHtml}</td>
+      <td>${tramosHtml}</td>
       <td><strong style="color:#38bdf8;">${item.radio}</strong></td>
-      <td>${isCrew ? `${item.count} pers.` : (item.leader || '—')}</td>
+      <td>${isCrew ? `${item.count || '?'} pers.` : (item.leader || '—')}</td>
       <td>
         ${isCompleted 
           ? '<span style="color:#10b981; font-weight:bold;">✔ Concluido</span>' 
@@ -3360,12 +3604,12 @@ function renderTable() {
       <td><strong style="color:${isCompleted ? '#a7f3d0' : '#94a3b8'};">${item.timeOut || (isCompleted ? '—' : 'Pendiente')}</strong></td>
       <td>
         ${!isCompleted ? `
-          <button class="btn-table-action" onclick="focusEntityOnMap('${item.id}')" title="Centrar en el mapa">Ver</button>
-          <button class="btn-table-action" onclick="editEntityFromTable('${item.id}', event)" title="Editar datos completos">Editar</button>
-          <button class="btn-table-action btn-move-action" onclick="moveEntityFromTable('${item.id}', event)" title="Reubicar o ampliar cantones en el plano">📍 Mover</button>
-          ${isCrew ? `<button class="btn-table-action btn-safe-zone ${item.inSafeZone ? 'active-safe' : ''}" onclick="toggleSafeZone('${item.id}', event)" title="Mover a Andén / Zona Segura">${item.inSafeZone ? '🚶 A Vía' : '🛡️ Andén'}</button>` : ''}
-          <button class="btn-table-action btn-finish-action" onclick="concludeWorkJob('${item.id}')" title="Concluir trabajo">✔ Concluir</button>
-          <button class="btn-table-action danger" onclick="${isCrew ? `removeCrew('${item.id}')` : `removeVehicle('${item.id}')`}" title="Despejar">Despejar</button>
+          <button class="btn-table-action" onclick="filaVer('${item.id}')" title="Centrar en el mapa">Ver</button>
+          <button class="btn-table-action" onclick="filaEditar('${item.id}', event)" title="Editar datos completos">Editar</button>
+          <button class="btn-table-action btn-move-action" onclick="filaMover('${item.id}', event)" title="Reubicar o ampliar cantones en el plano">📍 Mover</button>
+          ${isCrew ? `<button class="btn-table-action btn-safe-zone ${item.inSafeZone ? 'active-safe' : ''}" onclick="filaAndén('${item.id}', event)" title="Mover a Andén / Zona Segura">${item.inSafeZone ? '🚶 A Vía' : '🛡️ Andén'}</button>` : ''}
+          <button class="btn-table-action btn-finish-action" onclick="filaConcluir('${item.id}')" title="Concluir trabajo">✔ Concluir</button>
+          <button class="btn-table-action danger" onclick="filaDespejar('${item.id}')" title="Despejar">Despejar</button>
         ` : `
           <button class="btn-table-action" onclick="reopenCompletedJob('${item.id}')" title="Reabrir a Vía Principal">Reabrir</button>
           <button class="btn-table-action danger" onclick="deleteCompletedJob('${item.id}')" title="Eliminar del archivo">Borrar</button>
@@ -3381,6 +3625,157 @@ function renderTable() {
     }
     
     tbody.appendChild(tr);
+  });
+}
+
+// Una fila por trabajo: fichas del mismo permiso y responsable (ej. V1 y V2) se muestran juntas
+function claveFilaTrabajo(e) {
+  return e.ot ? `${e.type}|${e.ot}|${e.responsible || e.vehicleType}` : `solo|${e.id}`;
+}
+
+function agruparFilasTabla(rows) {
+  if (appState.activeTab === 'completed') return rows.map(r => ({ base: r, items: [r] }));
+  const mapa = new Map();
+  rows.forEach(r => {
+    const k = claveFilaTrabajo(r);
+    if (!mapa.has(k)) mapa.set(k, { base: r, items: [] });
+    mapa.get(k).items.push(r);
+  });
+  return [...mapa.values()].map(f => ({ base: ordenarViasGrupo(f.items)[0], items: ordenarViasGrupo(f.items) }));
+}
+
+function ordenarViasGrupo(items) {
+  const orden = { V1: 1, V2: 2, D1: 3, D2: 4 };
+  return items.slice().sort((a, b) => (orden[a.via] || 9) - (orden[b.via] || 9));
+}
+
+function miembrosGrupoTrabajo(id) {
+  const todas = [...appState.crews, ...appState.vehicles];
+  const e = todas.find(x => x.id === id);
+  if (!e) return [];
+  const k = claveFilaTrabajo(e);
+  return todas.filter(x => claveFilaTrabajo(x) === k);
+}
+
+// Si un trabajo en Vía 2 pasa por el empalme de D1 o D2, pregunta si se conecta.
+// Si no pasa por el empalme, no pregunta.
+function ofrecerConexionRamal(entidad) {
+  if (!entidad || entidad.via !== 'V2' || entidad.inSafeZone) return;
+  const opciones = [];
+  if (entidad.xMin <= 3010 && entidad.xMax >= 2920) opciones.push('D1');
+  if (entidad.xMin <= 3440 && entidad.xMax >= 3340) opciones.push('D2');
+  if (!opciones.length) return;
+  const d1 = document.getElementById('rc-d1');
+  const d2 = document.getElementById('rc-d2');
+  d1.hidden = !opciones.includes('D1');
+  d2.hidden = !opciones.includes('D2');
+  document.getElementById('rc-text').textContent =
+    `${entidad.responsible || entidad.vehicleType} (permiso ${entidad.ot || 's/n'}) pasa por el empalme ${opciones.join(' / ')} del ramal. ¿Quieres conectar el mismo trabajo al ramal?`;
+  const conectar = (ramal) => {
+    closeModal('modal-ramal-conexion');
+    crearConexionRamal(entidad, ramal);
+  };
+  d1.onclick = () => conectar('D1');
+  d2.onclick = () => conectar('D2');
+  document.getElementById('rc-no').onclick = () => closeModal('modal-ramal-conexion');
+  openModal('modal-ramal-conexion');
+}
+
+function crearConexionRamal(origen, ramal) {
+  const xMin = ramal === 'D1' ? 2920 : 3340;
+  const xMax = ramal === 'D1' ? 3010 : 3440;
+  const copia = {
+    ...origen,
+    id: `${origen.type === 'crew' ? 'CRW' : 'VEH'}-${ramal}${Date.now().toString().slice(-6)}`,
+    via: ramal,
+    zones: [ramal === 'D1' ? 'Z-RAMAL-D1' : 'Z-RAMAL-D2'],
+    zoneLabel: ramal === 'D1' ? 'Ramal D1 (Vía 2 ⇄ Patio Taller Santa Anita)' : 'Ramal D2 (Vía 2 ⇄ Patio Taller Santa Anita)',
+    xMin,
+    xMax,
+    x: (xMin + xMax) / 2,
+    isWorking: false,
+    workTimer: 0
+  };
+  if (origen.type === 'crew') appState.crews.push(copia);
+  else appState.vehicles.push(copia);
+  appState.historyLog.push({
+    timestamp: new Date().toISOString(),
+    action: 'CONEXION_RAMAL',
+    detail: `${origen.responsible || origen.vehicleType} (${origen.ot || 's/n'}) conectado al ramal ${ramal}.`
+  });
+  persistState();
+  renderAll();
+  showToast(`Trabajo conectado al ramal ${ramal}.`, 'success');
+}
+
+// Pregunta a qué vía aplicar la acción; si el trabajo solo está en una vía, ejecuta directo
+function pedirAlcanceVias(titulo, texto, miembros, cb) {
+  if (miembros.length < 2) { cb(miembros); return; }
+  document.getElementById('group-scope-title').textContent = titulo;
+  document.getElementById('group-scope-text').textContent = texto;
+  ['V1', 'V2', 'D1', 'D2'].forEach(via => {
+    const btn = document.getElementById(`gs-${via.toLowerCase()}`);
+    const m = miembros.find(x => x.via === via);
+    btn.hidden = !m;
+    btn.onclick = () => { closeModal('modal-group-scope'); if (m) cb([m]); };
+  });
+  openModal('modal-group-scope');
+}
+
+window.filaVer = function(id) { focusEntityOnMap(id); };
+
+window.filaEditar = function(id, event) {
+  if (event) event.stopPropagation();
+  const grupo = miembrosGrupoTrabajo(id);
+  pedirAlcanceVias('Editar trabajo', 'Elige la vía que vas a editar.', grupo, sel => {
+    if (!sel.length) return;
+    editEntityFromTable(sel[0].id, event);
+    appState.editarGrupoIds = null;
+  });
+};
+
+window.filaMover = function(id, event) {
+  if (event) event.stopPropagation();
+  pedirAlcanceVias('Mover trabajo', 'Elige la vía que vas a reubicar.', miembrosGrupoTrabajo(id), sel => {
+    if (sel[0]) moveEntityFromTable(sel[0].id, null);
+  });
+};
+
+
+window.filaAndén = function(id, event) {
+  if (event) event.stopPropagation();
+  const grupo = miembrosGrupoTrabajo(id);
+  const quiero = !(grupo.find(m => m.id === id) || grupo[0]).inSafeZone;
+  pedirAlcanceVias('Zona segura', 'Elige la vía a replegar a andén o a retomar en vía.', grupo, sel => {
+    sel.forEach(m => { if (!!m.inSafeZone !== quiero) toggleSafeZone(m.id); });
+  });
+};
+
+window.filaConcluir = function(id) {
+  pedirAlcanceVias('Concluir trabajo', 'Elige la vía que se archiva como concluida.', miembrosGrupoTrabajo(id), sel => {
+    const curTime = new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    sel.forEach(m => concludeWorkJob(m.id, curTime, m.notes || 'Trabajo concluido desde tabla'));
+  });
+};
+
+window.filaDespejar = function(id) {
+  pedirAlcanceVias('Despejar de vía', 'Elige la vía que vas a despejar.', miembrosGrupoTrabajo(id), sel => {
+    sel.forEach(m => { if (m.type === 'crew') removeCrew(m.id); else removeVehicle(m.id); });
+  });
+};
+
+// Copia los datos compartidos a las demás vías del mismo trabajo cuando se editó "ambas vías"
+function propagarEdicionGrupo(token) {
+  const ids = appState.editarGrupoIds;
+  appState.editarGrupoIds = null;
+  if (!ids || !ids.includes(token.id)) return;
+  const campos = token.type === 'crew'
+    ? ['responsible', 'company', 'radio', 'count', 'timeIn', 'timeOut', 'notes']
+    : ['vehicleType', 'company', 'radio', 'timeIn', 'timeOut', 'notes'];
+  const todas = [...appState.crews, ...appState.vehicles];
+  ids.filter(id => id !== token.id).forEach(id => {
+    const o = todas.find(x => x.id === id);
+    if (o) campos.forEach(k => { o[k] = token[k]; });
   });
 }
 
@@ -3584,7 +3979,7 @@ function generateDailySheetHTML() {
   }
   
   let totalPersonal = 0;
-  appState.crews.forEach(c => totalPersonal += (c.count || 4));
+  appState.crews.forEach(c => totalPersonal += (c.count || 0));
   
   let html = `
     <!-- Cabecera Oficial Metro de Lima Línea 2 -->
@@ -3597,7 +3992,7 @@ function generateDailySheetHTML() {
         </div>
       </div>
       <div class="official-meta-box">
-        <strong>PARTE DIARIO OFICIAL</strong><br>
+        <strong>REPORTE SPCO</strong><br>
         <span>REF: ATS-VP-ETAPA-1A</span>
       </div>
     </div>
@@ -3637,6 +4032,7 @@ function generateDailySheetHTML() {
         <tr>
           <th style="width:75px;">Categoría</th>
           <th>ID / Responsable</th>
+          <th style="width:110px;">Permiso</th>
           <th>Empresa / Disciplina</th>
           <th style="width:40px;">Vía</th>
           <th>Tramos Cubiertos</th>
@@ -3650,18 +4046,19 @@ function generateDailySheetHTML() {
   `;
   
   if (appState.crews.length === 0 && appState.vehicles.length === 0) {
-    html += `<tr><td colspan="9" style="text-align:center; padding:12px; color:#64748b;">(Sin trabajos activos en vía principal al momento del corte de guardia)</td></tr>`;
+    html += `<tr><td colspan="10" style="text-align:center; padding:12px; color:#64748b;">(Sin trabajos activos en vía principal al momento del corte de guardia)</td></tr>`;
   } else {
     appState.crews.forEach(c => {
       html += `
         <tr>
           <td><span class="sheet-badge sheet-badge-crew">${c.inSafeZone ? '🛡️ En Andén' : '👷 Cuadrilla'}</span></td>
           <td><strong>${c.responsible}</strong></td>
+          <td><strong>${c.ot || '—'}</strong></td>
           <td>${c.company}</td>
           <td><span class="sheet-badge ${c.via === 'V1' ? 'sheet-badge-v1' : 'sheet-badge-v2'}">${c.via}</span></td>
           <td>${c.zoneLabel}</td>
           <td><strong>${c.radio}</strong></td>
-          <td>${c.count} pers.</td>
+          <td>${c.count || '?'} pers.</td>
           <td>${c.timeIn}</td>
           <td>${c.inSafeZone ? 'En zona segura de andén (vía despejada)' : (c.notes || 'Mantenimiento de infraestructura')}</td>
         </tr>
@@ -3673,6 +4070,7 @@ function generateDailySheetHTML() {
         <tr>
           <td><span class="sheet-badge sheet-badge-veh">🚜 Vehículo</span></td>
           <td><strong>${v.vehicleType}</strong></td>
+          <td><strong>${v.ot || '—'}</strong></td>
           <td>${v.company}</td>
           <td><span class="sheet-badge ${v.via === 'V1' ? 'sheet-badge-v1' : 'sheet-badge-v2'}">${v.via}</span></td>
           <td>${v.zoneLabel}</td>
@@ -3696,6 +4094,7 @@ function generateDailySheetHTML() {
         <tr>
           <th style="width:75px;">Categoría</th>
           <th>Responsable / Unidad</th>
+          <th style="width:110px;">Permiso</th>
           <th>Empresa</th>
           <th style="width:40px;">Vía</th>
           <th>Tramos Autorizados</th>
@@ -3709,7 +4108,7 @@ function generateDailySheetHTML() {
   `;
   
   if (appState.completedJobs.length === 0) {
-    html += `<tr><td colspan="9" style="text-align:center; padding:12px; color:#64748b;">(Sin trabajos terminados registrados durante este turno)</td></tr>`;
+    html += `<tr><td colspan="10" style="text-align:center; padding:12px; color:#64748b;">(Sin trabajos terminados registrados durante este turno)</td></tr>`;
   } else {
     appState.completedJobs.forEach(j => {
       const isCrew = j.type === 'crew' || j.category === 'crew';
@@ -3717,6 +4116,7 @@ function generateDailySheetHTML() {
         <tr>
           <td><span class="sheet-badge ${isCrew ? 'sheet-badge-crew' : 'sheet-badge-veh'}">${isCrew ? '👷 Cuadrilla' : '🚜 Vehículo'}</span></td>
           <td><strong>${isCrew ? j.responsible : j.vehicleType}</strong></td>
+          <td><strong>${j.ot || '—'}</strong></td>
           <td>${j.company}</td>
           <td><span class="sheet-badge ${j.via === 'V1' ? 'sheet-badge-v1' : 'sheet-badge-v2'}">${j.via}</span></td>
           <td>${j.zoneLabel}</td>
@@ -3788,7 +4188,7 @@ function exportDailySheetStandalone() {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Parte Diario Oficial ATS - Metro de Lima Línea 2</title>
+  <title>Reporte SPCO ATS - Metro de Lima Línea 2</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #fff; color: #000; padding: 25px; margin: 0; }
     .official-sheet-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0284c7; padding-bottom: 12px; margin-bottom: 14px; }
@@ -3825,9 +4225,9 @@ function exportDailySheetStandalone() {
   const url = URL.createObjectURL(blob);
   const dlAnchor = document.createElement('a');
   dlAnchor.href = url;
-  dlAnchor.download = `PARTE_DIARIO_L2_ATS_${new Date().toISOString().slice(0, 10)}.html`;
+  dlAnchor.download = `REPORTE_SPCO_L2_ATS_${new Date().toISOString().slice(0, 10)}.html`;
   dlAnchor.click();
-  showToast('Parte Diario descargado en HTML para firma', 'success');
+  showToast('Reporte SPCO descargado en HTML para firma', 'success');
 }
 
 // ------------------------------------------------------------------------------
@@ -3932,7 +4332,7 @@ function generateShiftReport() {
   const timeStr = now.toLocaleTimeString('es-PE', { hour12: false });
   
   let totalPersonal = 0;
-  appState.crews.forEach(c => totalPersonal += (c.count || 4));
+  appState.crews.forEach(c => totalPersonal += (c.count || 0));
   
   let txt = `========================================================================================\n`;
   txt += `           METRO DE LIMA - LÍNEA 2 | ACTA DE TRABAJOS EN VÍA PRINCIPAL (OCIR ATS)        \n`;
@@ -3949,7 +4349,7 @@ function generateShiftReport() {
     txt += `   (Sin cuadrillas activas al momento del corte)\n\n`;
   } else {
     appState.crews.forEach((c, i) => {
-      txt += `   [#${i + 1}] Responsable : ${c.responsible.padEnd(22)} | Cant: ${String(c.count).padStart(2)} pers. | Radio TETRA: ${c.radio}\n`;
+      txt += `   [#${i + 1}] Responsable : ${c.responsible.padEnd(22)} | Cant: ${String(c.count || '?').padStart(2)} pers. | Radio TETRA: ${c.radio}\n`;
       txt += `        Empresa     : ${c.company}\n`;
       txt += `        Tramos      : ${c.zoneLabel} (${c.via})\n`;
       txt += `        Estado      : ${c.inSafeZone ? 'En Andén (Zona Segura)' : 'En vía activa'} | Ingreso: ${c.timeIn} | Obs: ${c.notes || '—'}\n`;
@@ -4613,6 +5013,9 @@ function stopCurrentSong() {
   document.querySelectorAll('.saiyan-aura, .starman-rainbow, .pikachu-storm, .zelda-triforce, .eva-berserk').forEach(el => {
     el.classList.remove('saiyan-aura', 'starman-rainbow', 'pikachu-storm', 'zelda-triforce', 'eva-berserk');
   });
+
+  // Limpiar indicadores visuales de reproducción en la Sala Arcade
+  document.querySelectorAll('.arcade-btn-play').forEach(btn => btn.classList.remove('active-song'));
 }
 
 function applyAuraToAllTokens(auraClass) {
@@ -4861,13 +5264,214 @@ function playChiptuneSong(songKey) {
       stopCurrentSong();
     }, 7500));
   }
+
+  // ==========================================================================
+  // 6. NAVIDAD L2 — VILLANCICO CHIPTUNE CAMPANILLAS (DOMINIO PÚBLICO)
+  // ==========================================================================
+  else if (songKey === 'xmas') {
+    showToast('🎅 ¡MODO NAVIDAD EN LÍNEA 2! Campanillas chiptune en andenes.', 'success');
+    const melody = [
+      { f: N.E5, t: 0.00, d: 0.18 }, { f: N.E5, t: 0.22, d: 0.18 }, { f: N.E5, t: 0.44, d: 0.36 },
+      { f: N.E5, t: 0.84, d: 0.18 }, { f: N.E5, t: 1.06, d: 0.18 }, { f: N.E5, t: 1.28, d: 0.36 },
+      { f: N.E5, t: 1.68, d: 0.18 }, { f: N.G5, t: 1.90, d: 0.18 }, { f: N.C5, t: 2.12, d: 0.24 },
+      { f: N.D5, t: 2.40, d: 0.24 }, { f: N.E5, t: 2.68, d: 0.55 }
+    ];
+    melody.forEach(m => {
+      playNote(m.f, m.t, m.d, 'triangle', 0.13);
+      playBass(m.f / 2, m.t, m.d, 0.10);
+    });
+    activeSongTimeouts.push(setTimeout(() => stopCurrentSong(), 3600));
+  }
+
+  // ==========================================================================
+  // 7. PAC-MAN — INTERLUDIO ARCADE MAZE (WAKA-WAKA ORIGINAL)
+  // ==========================================================================
+  else if (songKey === 'pacman') {
+    showToast('ᗧ••• ¡WAKA-WAKA! Modo arcade laberinto activado.', 'warning');
+    const now0 = ctx.currentTime + 0.05;
+    for (let i = 0; i < 12; i++) {
+      const t = i * 0.16;
+      const f = i % 2 === 0 ? 280 : 360;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(f, now0 + t);
+      gain.gain.setValueAtTime(0.10, now0 + t);
+      gain.gain.exponentialRampToValueAtTime(0.001, now0 + t + 0.10);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now0 + t);
+      osc.stop(now0 + t + 0.10);
+      activeSongAudioNodes.push(osc, gain);
+    }
+    activeSongTimeouts.push(setTimeout(() => stopCurrentSong(), 2200));
+  }
+
+  // ==========================================================================
+  // 8. SONIC THE HEDGEHOG — CHIME DE ANILLOS + RIFF SPEED ZONE ORIGINAL
+  // ==========================================================================
+  else if (songKey === 'sonic') {
+    showToast('💨 ¡VELOCIDAD SUPERSÓNICA! Anillos y estela azul activados.', 'info');
+    const melody = [
+      { f: N.B5, t: 0.00, d: 0.12 }, { f: N.E6, t: 0.14, d: 0.18 },
+      { f: N.B5, t: 0.36, d: 0.12 }, { f: N.E6, t: 0.50, d: 0.18 },
+      { f: N.G5, t: 0.80, d: 0.12 }, { f: N.B5, t: 0.94, d: 0.12 }, { f: N.D6, t: 1.08, d: 0.30 },
+      { f: N.E6, t: 1.44, d: 0.12 }, { f: N.G6, t: 1.58, d: 0.40 }
+    ];
+    melody.forEach(m => {
+      playNote(m.f, m.t, m.d, 'square', 0.12);
+      playBass(m.f / 2, m.t, m.d, 0.10);
+    });
+    activeSongTimeouts.push(setTimeout(() => stopCurrentSong(), 2400));
+  }
 }
 
 // ==============================================================================
-// 23. INICIALIZACIÓN DE TRIGGERS, CÓDIGO KONAMI Y SALA ARCADE
+// 23. HOTSPOTS DE PASCUA, CONTADOR Y SALA ARCADE
 // ==============================================================================
+const EASTER_HOTSPOTS = [
+  { key: 'pokemon', label: 'Pokémon', icon: '⚡', x: 895, y: 32, song: 'pokemon', aura: 'pikachu-storm', official: 'https://www.youtube.com/@PokemonOficialES' },
+  { key: 'dbz', label: 'Dragon Ball Z', icon: '🔥', x: 1040, y: 170, song: 'dbz', aura: 'saiyan-aura', official: 'https://www.youtube.com/@DragonBallOficial' },
+  { key: 'xmas', label: 'Navidad L2', icon: '🎄', x: 1260, y: 86, song: 'xmas', aura: null, official: 'https://open.spotify.com/search/villancicos%20clasicos' },
+  { key: 'mario', label: 'Super Mario', icon: '⭐', x: 44, y: 172, song: 'mario', aura: 'starman-rainbow', official: 'https://www.youtube.com/@NintendoAmerica' },
+  { key: 'zelda', label: 'Zelda', icon: '🗡️', x: 3514, y: 172, song: 'zelda', aura: 'zelda-triforce', official: 'https://www.youtube.com/@NintendoAmerica' },
+  { key: 'pacman', label: 'Pac-Man', icon: '•••', x: 1900, y: 402, song: 'pacman', aura: null, official: 'https://www.youtube.com/@BandaiNamcoAm' },
+  { key: 'sonic', label: 'Sonic', icon: '💨', x: 2120, y: 170, song: 'sonic', aura: null, official: 'https://www.youtube.com/@SEGA' },
+  { key: 'eva', label: 'Tetris / EVA', icon: '⬡', x: 3304, y: -42, song: 'evangelion', aura: 'eva-berserk', official: 'https://open.spotify.com/search/evangelion%20cruel%20angel%20thesis' }
+];
+
+const EASTER_STORAGE_KEY = 'ATS_REPLICA_EASTER_HOTSPOTS_V1';
+
+function getDiscoveredHotspots() {
+  try {
+    const raw = localStorage.getItem(EASTER_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveDiscoveredHotspots(map) {
+  try {
+    localStorage.setItem(EASTER_STORAGE_KEY, JSON.stringify(map));
+  } catch (e) { /* noop */ }
+}
+
+function updateEasterCounter() {
+  const discovered = getDiscoveredHotspots();
+  const count = Object.values(discovered).filter(Boolean).length;
+  const text = `${count}/8`;
+  const headerCounter = document.getElementById('easter-counter');
+  const modalCounter = document.getElementById('arcade-counter');
+  if (headerCounter) headerCounter.textContent = text;
+  if (modalCounter) modalCounter.textContent = text;
+  EASTER_HOTSPOTS.forEach(h => {
+    const card = document.querySelector(`.arcade-card[data-hotspot="${h.key}"]`);
+    if (!card) return;
+    const status = card.querySelector('.arcade-status');
+    if (discovered[h.key]) {
+      card.classList.add('discovered');
+      if (status) status.textContent = '✓ Descubierto';
+    } else {
+      card.classList.remove('discovered');
+      if (status) status.textContent = '🔒 Pista de ubicación';
+    }
+  });
+  return count;
+}
+
+function renderEasterHotspots() {
+  const layer = document.getElementById('easter-hotspots-layer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  EASTER_HOTSPOTS.forEach(h => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('class', 'easter-hotspot');
+    g.setAttribute('tabindex', '0');
+    g.setAttribute('role', 'button');
+    g.setAttribute('aria-label', `Secreto ${h.label}`);
+    g.setAttribute('transform', `translate(${h.x}, ${h.y})`);
+    g.setAttribute('data-hotspot', h.key);
+
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    ring.setAttribute('class', 'hotspot-ring');
+    ring.setAttribute('r', '9');
+    layer.appendChild(g);
+    g.appendChild(ring);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('class', 'hotspot-label');
+    label.setAttribute('y', '22');
+    label.textContent = h.label;
+    g.appendChild(label);
+
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      discoverHotspot(h.key);
+    });
+    g.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        discoverHotspot(h.key);
+      }
+    });
+  });
+}
+
+function discoverHotspot(key) {
+  const hotspot = EASTER_HOTSPOTS.find(h => h.key === key);
+  if (!hotspot) return;
+  const discovered = getDiscoveredHotspots();
+  const wasNew = !discovered[key];
+  discovered[key] = true;
+  saveDiscoveredHotspots(discovered);
+  updateEasterCounter();
+
+  if (hotspot.song) {
+    playChiptuneSong(hotspot.song);
+  }
+  if (hotspot.aura) {
+    applyAuraToAllTokens(hotspot.aura);
+    setTimeout(() => {
+      document.querySelectorAll(`.${hotspot.aura}`).forEach(el => el.classList.remove(hotspot.aura));
+    }, 6000);
+  }
+
+  if (key === 'xmas') {
+    document.querySelectorAll('.crew-token').forEach(el => {
+      el.classList.add('santa-pompon');
+      setTimeout(() => el.classList.remove('santa-pompon'), 6000);
+    });
+  } else if (key === 'pacman') {
+    document.querySelectorAll('.vehicle-token').forEach(el => {
+      el.classList.add('pacman-mouth');
+      setTimeout(() => el.classList.remove('pacman-mouth'), 6000);
+    });
+  } else if (key === 'sonic') {
+    document.querySelectorAll('.vehicle-token').forEach(el => {
+      el.style.filter = 'drop-shadow(0 0 8px #38bdf8)';
+      setTimeout(() => el.style.filter = '', 4000);
+    });
+  }
+
+  if (wasNew) {
+    const btn = document.getElementById('btn-open-easter-eggs');
+    if (btn) {
+      btn.classList.remove('discovered-flash');
+      void btn.offsetWidth;
+      btn.classList.add('discovered-flash');
+      setTimeout(() => btn.classList.remove('discovered-flash'), 1200);
+    }
+    showToast(`🎮 ¡Secreto descubierto! ${hotspot.label}`, 'success');
+  }
+}
+
 function initEasterEggs() {
-  // 1. Botón para abrir la Sala Arcade desde QuickNav
+  renderEasterHotspots();
+  updateEasterCounter();
+
+  // Botón para abrir la Sala Arcade
   const btnOpen = document.getElementById('btn-open-easter-eggs');
   const modal = document.getElementById('modal-easter-eggs');
   if (btnOpen && modal) {
@@ -4877,18 +5481,13 @@ function initEasterEggs() {
     });
   }
 
-  // 2. Botones de reproducción en el modal
+  // Botones de reproducción en el modal
   document.querySelectorAll('[data-song]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const song = e.currentTarget.getAttribute('data-song');
       playChiptuneSong(song);
-    });
-  });
-
-  document.querySelectorAll('[data-stop]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      stopCurrentSong();
-      showToast('Música detenida y auras desactivadas.', 'info');
+      document.querySelectorAll('.arcade-btn-play').forEach(b => b.classList.remove('active-song'));
+      e.currentTarget.classList.add('active-song');
     });
   });
 
@@ -4896,17 +5495,17 @@ function initEasterEggs() {
   if (btnStopAll) {
     btnStopAll.addEventListener('click', () => {
       stopCurrentSong();
+      document.querySelectorAll('.arcade-btn-play').forEach(b => b.classList.remove('active-song'));
       showToast('Toda la música fue detenida.', 'info');
     });
   }
 
-  // 3. Listener del Código Konami y Palabras Clave por Teclado
+  // Listener del Código Konami y Palabras Clave por Teclado
   const konamiPattern = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
   let konamiProgress = 0;
   let typedBuffer = '';
 
   window.addEventListener('keydown', (e) => {
-    // Código Konami
     const key = e.key.toLowerCase();
     const expected = konamiPattern[konamiProgress].toLowerCase();
     if (key === expected) {
@@ -4920,28 +5519,22 @@ function initEasterEggs() {
       konamiProgress = 0;
     }
 
-    // Palabras clave escritas
     if (e.key.length === 1 && /[a-z0-9]/i.test(e.key)) {
       typedBuffer += e.key.toLowerCase();
       if (typedBuffer.length > 15) typedBuffer = typedBuffer.slice(-15);
 
-      // Desbloqueo exclusivo del menú con la palabra GAMER
       if (typedBuffer.endsWith('gamer')) {
-        const btn = document.getElementById('btn-open-easter-eggs');
-        if (btn) {
-          btn.classList.add('revealed');
-          btn.style.setProperty('display', 'inline-flex', 'important');
-        }
         playSound('1up');
-        showToast('👾 ¡MODO GAMER DESBLOQUEADO! Menú Secretos & Anime activado.', 'warning');
+        showToast('👾 ¡MODO GAMER ACTIVADO! Explora el plano para descubrir secretos.', 'warning');
         typedBuffer = '';
       } else if (typedBuffer.endsWith('navidad') || typedBuffer.endsWith('xmas')) {
-        playSound('xmas');
-        showToast('🎅 ¡MODO NAVIDAD EN LÍNEA 2! Clima festivo en túneles.', 'success');
+        discoverHotspot('xmas');
         typedBuffer = '';
       } else if (typedBuffer.endsWith('pacman')) {
-        playSound('waka');
-        showToast('ᗧ••• ¡WAKA-WAKA! Sonido Pac-Man reproducido.', 'warning');
+        discoverHotspot('pacman');
+        typedBuffer = '';
+      } else if (typedBuffer.endsWith('sonic')) {
+        discoverHotspot('sonic');
         typedBuffer = '';
       } else if (typedBuffer.endsWith('dbz') || typedBuffer.endsWith('goku')) {
         playChiptuneSong('dbz');
@@ -4962,8 +5555,7 @@ function initEasterEggs() {
     }
   });
 
-  // 4. Clics secretos en la interfaz
-  // A. 3 clics en la insignia [L2] -> Mario Starman
+  // Clics secretos en la interfaz
   const brandBadge = document.querySelector('.brand-badge');
   if (brandBadge) {
     let clickCount = 0;
@@ -4981,7 +5573,6 @@ function initEasterEggs() {
     });
   }
 
-  // B. 5 clics en Vitalidad ATS -> DBZ Super Saiyan
   const vitalityBadge = document.querySelector('.system-vitality-badge');
   if (vitalityBadge) {
     let clickCount = 0;
@@ -4999,7 +5590,6 @@ function initEasterEggs() {
     });
   }
 
-  // C. 5 clics en el Reloj -> Evangelion Berserk
   const clockDisplay = document.getElementById('clock-display');
   if (clockDisplay) {
     let clickCount = 0;
@@ -5016,40 +5606,5 @@ function initEasterEggs() {
       }
     });
   }
-
-  // D. Clic en Pozo PV20 -> Pokémon
-  const pv20 = document.getElementById('pv-20');
-  if (pv20) {
-    pv20.addEventListener('click', (e) => {
-      if (e.detail >= 2) {
-        playChiptuneSong('pokemon');
-      }
-    });
-  }
-
-  // E. Huevo de pascua fácil: Clic en andenes o badges de estación -> Jingle Bells Navideño 8-bit
-  document.querySelectorAll('.platform-box, .station-pill-badge').forEach(st => {
-    st.style.cursor = 'pointer';
-    st.addEventListener('click', (e) => {
-      e.stopPropagation();
-      playSound('xmas');
-      showToast('🎄 ¡Feliz Navidad en Línea 2! Clima festivo en andenes y túneles.', 'success');
-    });
-  });
-
-  // F. Huevo de pascua fácil: Clic en Pozos de Ventilación -> Turboventilación Whoosh
-  document.querySelectorAll('.pozo-group, [id^="pv-"]').forEach(pv => {
-    pv.style.cursor = 'pointer';
-    pv.addEventListener('click', (e) => {
-      e.stopPropagation();
-      playSound('whoosh');
-      const anim = pv.querySelector('animateTransform');
-      if (anim) {
-        anim.setAttribute('dur', '0.08s');
-        setTimeout(() => { anim.setAttribute('dur', '0.75s'); }, 2200);
-      }
-      showToast('🌪️ ¡Turboventilación forzada activada a 3000 RPM!', 'info');
-    });
-  });
 }
 

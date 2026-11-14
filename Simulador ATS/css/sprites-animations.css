@@ -1,0 +1,835 @@
+
+
+/* ==========================================================================
+   4. ELEMENTOS FLOTANTES DE ARRASTRE Y SEGURIDAD
+   ========================================================================== */
+
+#pegman-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 5000;
+  transform: translate(-50%, -85%);
+  display: none;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.8));
+}
+
+#pegman-drag-ghost .ghost-inner {
+  font-size: 40px;
+  animation: pegmanDangle 0.5s infinite alternate ease-in-out;
+  transform-origin: center top;
+}
+
+@keyframes pegmanDangle {
+  0% { transform: rotate(-8deg) scale(1.05); }
+  100% { transform: rotate(8deg) scale(1.05); }
+}
+
+.ghost-via-badge {
+  font-size: 10px;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-top: 2px;
+  text-align: center;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.5px;
+}
+
+.ghost-via-badge.via-v1 {
+  background: #064e3b;
+  color: #a7f3d0;
+  border: 1px solid #10b981;
+}
+
+.ghost-via-badge.via-v2 {
+  background: #1e3a8a;
+  color: #bfdbfe;
+  border: 1px solid #38bdf8;
+}
+
+.ghost-via-badge.via-forbidden {
+  background: #991b1b;
+  color: #fee2e2;
+  border: 1px solid #ef4444;
+  animation: pulseForbiddenBadge 0.35s infinite alternate;
+}
+
+@keyframes pulseForbiddenBadge {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.06); filter: brightness(1.2); }
+}
+
+/* BANNER FLOTANTE DE ADVERTENCIA CRÍTICA: PROHIBIDO */
+#prohibition-hud {
+  position: fixed;
+  z-index: 5500;
+  pointer-events: none;
+  background: linear-gradient(180deg, #dc2626 0%, #991b1b 100%);
+  border: 2px solid #f87171;
+  border-radius: 8px;
+  padding: 10px 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.9), var(--shadow-glow-danger);
+  color: #fff;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-50%, -130%);
+  animation: prohibitionStrobe 0.4s infinite alternate;
+}
+
+@keyframes prohibitionStrobe {
+  0% { transform: translate(-50%, -130%) scale(1); filter: brightness(1); }
+  100% { transform: translate(-50%, -130%) scale(1.04); filter: brightness(1.2); }
+}
+
+.prohibition-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.6);
+}
+
+.prohibition-desc {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #fee2e2;
+  text-align: center;
+  max-width: 290px;
+}
+
+/* Ondulación de Colocación (Placement Ripple) */
+.placement-ripple {
+  animation: rippleSpread 1.2s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+
+@keyframes rippleSpread {
+  0% { r: 5px; opacity: 1; stroke-width: 4px; }
+  100% { r: 60px; opacity: 0; stroke-width: 1px; }
+}
+
+/* ==========================================================================
+   6. ENTIDADES ESTÁTICAS DE TRABAJO (CERO PARPADEO)
+   ========================================================================== */
+
+/* Cuadrilla a pie (Estática en vía) */
+.crew-token {
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.crew-token:hover {
+  filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.95));
+}
+
+/* Vehículo Auxiliar (Estático en vía) */
+.vehicle-token {
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+.vehicle-token:hover {
+  filter: drop-shadow(0 0 16px rgba(56, 189, 248, 0.95));
+}
+
+.vehicle-hazard-beacon {
+  animation: hazardStrobe 0.7s infinite alternate ease-in-out;
+}
+
+@keyframes hazardStrobe {
+  0% { r: 2.2px; fill: #fde68a; filter: drop-shadow(0 0 2px #fde68a); }
+  100% { r: 4px; fill: #f59e0b; filter: drop-shadow(0 0 8px #f59e0b); }
+}
+
+/* Badge de Múltiples Cuadrillas Coexistiendo */
+.multicrew-badge {
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.multicrew-badge:hover rect {
+  fill: #0369a1;
+  stroke: #7dd3fc;
+}
+
+@keyframes cardFadeIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* Animaciones y Gestos de Trabajo (Game-Feel) */
+.crew-flashlight-beam {
+  animation: flashlightSweep 2.2s infinite alternate ease-in-out;
+  transform-origin: 0px 0px;
+}
+
+@keyframes flashlightSweep {
+  0% { opacity: 0.25; transform: rotate(-5deg); }
+  50% { opacity: 0.55; transform: rotate(4deg); }
+  100% { opacity: 0.35; transform: rotate(-2deg); }
+}
+
+/* Las chispas de CUADRILLA no llevan animation CSS: tick() (simulator.js) pulsa su
+   opacidad en sinusoidal suave, solo mientras trabaja. Si hubiera un keyframe de
+   transform/opacity aquí, pisaría el inline style del bucle por prioridad de cascada. */
+
+@keyframes sparkPulse {
+  0% { opacity: 0.1; transform: scale(0.8); }
+  50% { opacity: 0.95; transform: scale(1.15); filter: drop-shadow(0 0 4px #fde68a); }
+  100% { opacity: 0.3; transform: scale(0.9); }
+}
+
+.vehicle-work-indicator {
+  animation: vehIndicatorGlow 1.2s infinite alternate ease-in-out;
+}
+
+@keyframes vehIndicatorGlow {
+  0% { opacity: 0.4; }
+  100% { opacity: 1; filter: drop-shadow(0 0 6px #38bdf8); }
+}
+
+/* Barrera Láser de Peligro / Cruce Prohibido en Vía (Videojuego) */
+.hazard-laser-barrier {
+  stroke: #ef4444;
+  stroke-width: 3.5px;
+  stroke-dasharray: 8 6;
+  animation: laserStrobe 0.25s infinite alternate ease-in-out;
+}
+
+@keyframes laserStrobe {
+  0% { opacity: 0.4; filter: drop-shadow(0 0 4px #ef4444); }
+  100% { opacity: 1; filter: drop-shadow(0 0 16px #ef4444); }
+}
+
+/* Ruedas giratorias de acero del vehículo auxiliar */
+.veh-wheel-spoke {
+  transform-origin: center;
+  animation: wheelRotate 0.4s linear infinite;
+}
+
+@keyframes wheelRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Humo de escape diesel animado (Aros que ascienden y se disipan) */
+.veh-smoke-ring-1 {
+  animation: smokeRingFloat 1.4s infinite ease-out;
+  transform-origin: center;
+}
+
+.veh-smoke-ring-2 {
+  animation: smokeRingFloat 1.4s infinite ease-out 0.45s;
+  transform-origin: center;
+}
+
+.veh-smoke-ring-3 {
+  animation: smokeRingFloat 1.4s infinite ease-out 0.9s;
+  transform-origin: center;
+}
+
+@keyframes smokeRingFloat {
+  0% { opacity: 0.85; transform: translate(0, 0) scale(0.6); }
+  40% { opacity: 0.55; transform: translate(-6px, -10px) scale(1.1); }
+  80% { opacity: 0.25; transform: translate(-14px, -18px) scale(1.6); }
+  100% { opacity: 0; transform: translate(-22px, -24px) scale(2.2); }
+}
+
+/* Tapa basculante del tubo de escape (Flapper de chimenea) */
+.veh-exhaust-flapper {
+  transform-origin: 0px 0px;
+  animation: flapperBounce 0.25s infinite alternate ease-in-out;
+}
+
+@keyframes flapperBounce {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-28deg); }
+}
+
+/* Vibración y Cabeceo de Suspensión de Dresina Bivial (Chug-Chug):
+   el transform de .veh-visual lo escribe tick() (squash, flip de sentido, rotación
+   de ramal y chug translate/rotate amortiguado solo cuando rueda). Una animation
+   CSS aquí pisaría el atributo transform y neutralizaría el flip de dirección. */
+.veh-chug-vibe { /* animado por tick(): chug mínimo solo en movimiento */ }
+
+/* Grúa Hidráulica Articulada con Canastilla de Catenaria */
+.veh-crane-arm {
+  transform-origin: 0px 0px;
+  animation: craneHydraulic 2.4s infinite alternate ease-in-out;
+}
+
+@keyframes craneHydraulic {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(-3.5deg); }
+  100% { transform: rotate(2deg); }
+}
+
+.veh-crane-bucket {
+  transform-origin: center top;
+  animation: bucketSway 1.8s infinite alternate ease-in-out;
+}
+
+@keyframes bucketSway {
+  0% { transform: rotate(-4deg); }
+  100% { transform: rotate(4deg); }
+}
+
+/* Balizas Estroboscópicas Duales en Techo de Cabina */
+.beacon-strobe-a {
+  animation: strobeFlashA 0.3s infinite alternate ease-in-out;
+}
+
+.beacon-strobe-b {
+  animation: strobeFlashB 0.3s infinite alternate ease-in-out;
+}
+
+@keyframes strobeFlashA {
+  0%, 40% { opacity: 1; filter: drop-shadow(0 0 10px #f59e0b) brightness(1.5); }
+  60%, 100% { opacity: 0.15; filter: none; }
+}
+
+@keyframes strobeFlashB {
+  0%, 40% { opacity: 0.15; filter: none; }
+  60%, 100% { opacity: 1; filter: drop-shadow(0 0 10px #f59e0b) brightness(1.5); }
+}
+
+/* ==========================================================================
+   ESTILOS DE CUADRILLA A PIE (SPRITE DE VIDEOJUEGO ARCADE)
+   ========================================================================== */
+
+/* Ciclo de Vida, Respiración Idle y Bobbing Elástico (Shorts Animados & Game Feel) */
+.crew-char-body {
+  transform-origin: center bottom;
+  animation: crewIdleBreathing 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes crewIdleBreathing {
+  0%   { transform: translateY(0) scale(1, 1); }
+  50%  { transform: translateY(-0.7px) scale(0.99, 1.015); }
+  100% { transform: translateY(0) scale(1, 1); }
+}
+
+/* Pasos y postura de piernas articuladas: el walk-cycle lo conmuta tick() en
+   simulator.js (rotate(fase de paso) con pivotes -3,4 / 3,4), de modo que se
+   mueven SOLO al caminar y se asientan al trabajar. Un keyframe CSS de transform
+   aquí pisaría el atributo y las piernas bailarían incluso en faena. */
+.crew-leg-left { /* animado por tick(): rotate(fase de paso) */ }
+.crew-leg-right { /* animado por tick(): rotate(-fase de paso) */ }
+
+/* Accesibilidad: con prefers-reduced-motion se congelan los loops decorativos
+   (la locomoción real y los estados de vía siguen intactos). */
+@media (prefers-reduced-motion: reduce) {
+  .crew-char-body,
+  .crew-companion-group,
+  .crew-walkie-led,
+  .crew-flashlight-beam,
+  .crew-tamper-tool,
+  .veh-visual .crew-work-sparks,
+  .veh-exhaust-flapper,
+  .vehicle-work-indicator {
+    animation: none;
+  }
+}
+
+/* LED de Transmisión TETRA en el hombro */
+.crew-walkie-led {
+  animation: walkieBlink 0.8s infinite ease-in-out;
+}
+
+@keyframes walkieBlink {
+  0%, 100% { fill: #22c55e; filter: drop-shadow(0 0 4px #22c55e); }
+  50% { fill: #15803d; filter: none; }
+}
+
+/* Herramienta percutora / Bateadora de riel en faena */
+.crew-tamper-tool {
+  transform-origin: 0px -5px;
+  animation: tamperPercuss 0.12s infinite ease-in-out;
+}
+
+@keyframes tamperPercuss {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(1px, 2px) rotate(4deg); }
+  100% { transform: translate(-0.5px, -1px) rotate(-2deg); }
+}
+
+/* Estrellas y Chispas de Trabajo sobre el Riel:
+   - Cuadrillas a pie: opacidad pulsada por tick() (suave, solo en faena).
+   - Solo el faldón incandescente del tren amolador (M8), dentro de .veh-visual,
+     conserva animación CSS, reutilizando sparkPulse (0.9s, sin drop-shadow brusco). */
+.veh-visual .crew-work-sparks {
+  animation: sparkPulse 0.9s infinite alternate ease-in-out;
+}
+
+/* Compañero Asistente de Cuadrilla (Segundo Operario) */
+.crew-companion-group {
+  animation: companionBob 0.6s infinite alternate ease-in-out;
+  transform-origin: center bottom;
+}
+
+@keyframes companionBob {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-1.2px); }
+}
+
+/* Banderín Rojo de Vía del Asistente */
+.companion-flag {
+  transform-origin: 0px 0px;
+  animation: flagWave 0.5s infinite alternate ease-in-out;
+}
+
+@keyframes flagWave {
+  0% { transform: rotate(-6deg); }
+  100% { transform: rotate(8deg); }
+}
+
+/* Conos de Seguridad Reflectivos en Vía */
+.safety-cone {
+  animation: conePop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center bottom;
+}
+
+@keyframes conePop {
+  0% { transform: scale(0); opacity: 0; }
+  80% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes lightningSurge {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -180px; }
+}
+
+@keyframes lightningCrackle {
+  0%   { opacity: 0.95; stroke-width: 0.65px; }
+  25%  { opacity: 0.55; stroke-width: 0.5px; }
+  50%  { opacity: 1.00; stroke-width: 0.85px; filter: drop-shadow(0 0 3px #67e8f9); }
+  75%  { opacity: 0.70; stroke-width: 0.6px; }
+  100% { opacity: 0.95; stroke-width: 0.65px; }
+}
+
+@keyframes lightningCoronaPulse {
+  0%   { opacity: 0.25; stroke-width: 1.8px; }
+  50%  { opacity: 0.65; stroke-width: 2.6px; filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.8)); }
+  100% { opacity: 0.25; stroke-width: 1.8px; }
+}
+
+/* Fix Badge Multicuadrilla: cero parpadeo y cero jitter */
+.multicrew-badge {
+  cursor: pointer;
+}
+
+.multicrew-badge:hover rect {
+  fill: #0369a1;
+  stroke: #7dd3fc;
+}
+
+/* Estaciones: Puertas de Andén (PSD) con LEDs sutiles */
+.psd-led-blink {
+  animation: psdGlow 2.5s infinite alternate ease-in-out;
+}
+
+@keyframes psdGlow {
+  0%, 100% { fill: #10b981; opacity: 0.85; }
+  50% { fill: #34d399; opacity: 1; }
+}
+
+/* Patio Taller Santa Anita (PTSA) */
+.ptsa-tower-beacon {
+  animation: beaconTowerFlash 0.7s infinite alternate ease-in-out;
+}
+
+@keyframes beaconTowerFlash {
+  0% { fill: #7f1d1d; opacity: 0.3; }
+  100% { fill: #ef4444; opacity: 1; filter: drop-shadow(0 0 8px #ef4444); }
+}
+
+
+/* ==========================================================================
+   INDICADOR DE VITALIDAD DEL SISTEMA ATS (WATCHDOG TRIÁNGULO TÉCNICO)
+   ========================================================================== */
+.system-vitality-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+}
+
+.rgb-triangle-beacon {
+  width: 0;
+  height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 12px solid var(--accent-green);
+  filter: drop-shadow(0 0 4px var(--accent-green));
+  animation: trianglePulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes trianglePulse {
+  0%   { transform: scale(0.92); opacity: 0.75; }
+  100% { transform: scale(1.08); opacity: 1; }
+}
+
+.vitality-text {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   ANIMACIONES Y PULIDO DE SPRITES (GAME FEEL & CRAFT)
+   ========================================================================== */
+
+/* Chispas de soldadura aluminotérmica */
+.weld-spark-cascade {
+  animation: thermiteSparksCascade 0.6s ease-out infinite;
+  transform-origin: 0px 5px;
+}
+@keyframes thermiteSparksCascade {
+  0%   { opacity: 1; transform: translate(0, 0) scale(0.6); }
+  50%  { opacity: 0.9; transform: translate(6px, -8px) scale(1.2); }
+  100% { opacity: 0; transform: translate(12px, 8px) scale(0.3); }
+}
+
+/* Chispas de tronzadora de disco abrasivo */
+.saw-spark-spray {
+  animation: cutoffSawSparks 0.35s linear infinite;
+  transform-origin: 0px 0px;
+}
+@keyframes cutoffSawSparks {
+  0%   { opacity: 1; transform: translate(0, 0) scale(0.7); }
+  50%  { opacity: 0.85; transform: translate(-10px, 4px) scale(1.3); }
+  100% { opacity: 0; transform: translate(-18px, 10px) scale(0.4); }
+}
+
+/* Haz láser de estación total topográfica */
+.surveyor-laser-beam {
+  animation: totalStationPulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes totalStationPulse {
+  0%   { opacity: 0.35; stroke-width: 0.8px; }
+  100% { opacity: 1; stroke-width: 1.5px; filter: drop-shadow(0 0 4px #ef4444); }
+}
+
+/* Escáner ultrasónico de fisuras */
+.ultrasonic-radar-beam {
+  animation: ultrasonicRadarSweep 1.2s ease-out infinite;
+}
+@keyframes ultrasonicRadarSweep {
+  0%   { transform: scaleX(0.2); opacity: 0.9; }
+  100% { transform: scaleX(1.4); opacity: 0; }
+}
+
+/* Linterna y banderín de señalero de emergencia */
+.flagman-lantern-strobe {
+  animation: flagmanAlert 0.8s steps(2, start) infinite;
+}
+@keyframes flagmanAlert {
+  0%, 49% { fill: #ef4444; filter: drop-shadow(0 0 6px #ef4444); }
+  50%, 100% { fill: #22c55e; filter: drop-shadow(0 0 6px #22c55e); }
+}
+
+/* Balanceo de carga y brazo de camión grúa */
+.veh-crane-load-sway {
+  animation: craneHookSwing 2.5s ease-in-out infinite alternate;
+  transform-origin: 0px -25px;
+}
+@keyframes craneHookSwing {
+  0%   { transform: rotate(-3deg); }
+  100% { transform: rotate(3deg); }
+}
+
+/* Plataforma de tijera hidráulica */
+.veh-scissor-lift-group {
+  animation: scissorSway 3s ease-in-out infinite alternate;
+}
+@keyframes scissorSway {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-2px); }
+}
+
+/* Luces de emergencia de vehículo de rescate */
+.veh-rescue-strobe-red {
+  animation: rescueStrobeRed 0.6s infinite;
+}
+.veh-rescue-strobe-blue {
+  animation: rescueStrobeBlue 0.6s infinite 0.3s;
+}
+@keyframes rescueStrobeRed {
+  0%, 100% { opacity: 0.2; }
+  50%      { opacity: 1; filter: drop-shadow(0 0 8px #ef4444); }
+}
+@keyframes rescueStrobeBlue {
+  0%, 100% { opacity: 0.2; }
+  50%      { opacity: 1; filter: drop-shadow(0 0 8px #3b82f6); }
+}
+
+@keyframes secretFlash {
+  0%, 100% { border-color: var(--accent-amber); box-shadow: none; }
+  50% { border-color: var(--accent-cyan); box-shadow: 0 0 12px rgba(245, 158, 11, 0.45); }
+}
+
+/* ==========================================================================
+   15b. HOTSPOTS DE PASCUA EN EL PLANO SVG (NO INVASIVOS)
+   ========================================================================== */
+#easter-hotspots-layer {
+  pointer-events: none;
+}
+
+#easter-hotspots-layer .easter-hotspot {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+body.is-dragging-token #easter-hotspots-layer {
+  pointer-events: none !important;
+}
+
+.easter-hotspot {
+  opacity: 0.32;
+  transition: opacity 0.2s var(--ease-out);
+}
+
+.easter-hotspot:hover,
+.easter-hotspot:focus {
+  opacity: 1;
+  outline: none;
+}
+
+.easter-hotspot:focus-visible .hotspot-ring {
+  stroke: var(--border-focus);
+  stroke-width: 2.5px;
+}
+
+.hotspot-ring {
+  fill: var(--bg-app);
+  stroke: var(--text-muted);
+  stroke-width: 1.5px;
+  transform-origin: center;
+  transition: transform 0.25s var(--ease-out), stroke 0.2s, opacity 0.2s;
+}
+
+.easter-hotspot:hover .hotspot-ring,
+.easter-hotspot:focus .hotspot-ring {
+  transform: scale(1.18);
+  stroke: var(--accent-cyan);
+  opacity: 0.95;
+}
+
+.hotspot-icon {
+  font-size: 10px;
+  text-anchor: middle;
+  dominant-baseline: central;
+  pointer-events: none;
+}
+
+.hotspot-label {
+  font-size: 8px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 0.2s, transform 0.2s var(--ease-out);
+  pointer-events: none;
+}
+
+.easter-hotspot:hover .hotspot-label,
+.easter-hotspot:focus .hotspot-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   16. HUEVOS DE PASCUA (EASTER EGGS): AURAS DE ANIME Y VIDEOJUEGOS RETRO
+   ========================================================================== */
+
+/* 1. MODO SUPER SAIYAN (DRAGON BALL Z - CHA-LA HEAD-CHA-LA) */
+.saiyan-aura {
+  filter: drop-shadow(0 0 16px #facc15) drop-shadow(0 0 28px #eab308) drop-shadow(0 0 6px #ffffff) !important;
+  animation: saiyanAuraFlare 0.12s infinite alternate ease-in-out, saiyanJitter 0.08s infinite alternate !important;
+}
+
+@keyframes saiyanAuraFlare {
+  0%   { filter: drop-shadow(0 0 12px #facc15) drop-shadow(0 0 22px #eab308) drop-shadow(0 0 4px #ffffff); }
+  100% { filter: drop-shadow(0 0 24px #fef08a) drop-shadow(0 0 40px #f59e0b) drop-shadow(0 0 10px #ffffff); }
+}
+
+@keyframes saiyanJitter {
+  0%   { transform: translate(0, 0); }
+  50%  { transform: translate(0.6px, -0.6px); }
+  100% { transform: translate(-0.6px, 0.6px); }
+}
+
+/* 2. MODO STARMAN INVENCIBLE (SUPER MARIO BROS) */
+.starman-rainbow {
+  animation: starmanChroma 0.22s linear infinite, starmanHop 0.35s infinite alternate ease-in-out !important;
+}
+
+@keyframes starmanChroma {
+  0%   { filter: hue-rotate(0deg) drop-shadow(0 0 16px #ef4444) brightness(1.3); }
+  25%  { filter: hue-rotate(90deg) drop-shadow(0 0 18px #f59e0b) brightness(1.4); }
+  50%  { filter: hue-rotate(180deg) drop-shadow(0 0 20px #10b981) brightness(1.5); }
+  75%  { filter: hue-rotate(270deg) drop-shadow(0 0 18px #3b82f6) brightness(1.4); }
+  100% { filter: hue-rotate(360deg) drop-shadow(0 0 16px #ef4444) brightness(1.3); }
+}
+
+@keyframes starmanHop {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-3.5px); }
+}
+
+/* 3. MODO PIKACHU TORMENTA DE TRUENO (POKÉMON) */
+.pikachu-storm {
+  filter: drop-shadow(0 0 18px #fde047) drop-shadow(0 0 32px #38bdf8) !important;
+  animation: pikachuThunder 0.15s infinite alternate steps(2, start) !important;
+}
+
+@keyframes pikachuThunder {
+  0%   { filter: drop-shadow(0 0 8px #eab308) drop-shadow(0 0 14px #0284c7); opacity: 0.85; }
+  100% { filter: drop-shadow(0 0 30px #ffffff) drop-shadow(0 0 45px #facc15) brightness(1.7); opacity: 1; }
+}
+
+/* 4. MODO TRIFORCE SAGRADA (THE LEGEND OF ZELDA) */
+.zelda-triforce {
+  filter: drop-shadow(0 0 18px #22c55e) drop-shadow(0 0 30px #facc15) !important;
+  animation: zeldaTriforceGlow 1.2s infinite alternate ease-in-out !important;
+}
+
+@keyframes zeldaTriforceGlow {
+  0%   { filter: drop-shadow(0 0 10px #15803d) drop-shadow(0 0 16px #ca8a04); }
+  100% { filter: drop-shadow(0 0 26px #4ade80) drop-shadow(0 0 38px #fef08a) brightness(1.4); }
+}
+
+/* 5. MODO EVA-01 BERSERK (NEON GENESIS EVANGELION) */
+.eva-berserk {
+  filter: drop-shadow(0 0 18px #9333ea) drop-shadow(0 0 32px #22c55e) drop-shadow(0 0 12px #ef4444) !important;
+  animation: evaBerserkRage 0.3s infinite alternate ease-in-out !important;
+}
+
+@keyframes evaBerserkRage {
+  0%   { filter: drop-shadow(0 0 12px #7e22ce) drop-shadow(0 0 20px #16a34a); }
+  100% { filter: drop-shadow(0 0 28px #c084fc) drop-shadow(0 0 45px #4ade80) drop-shadow(0 0 18px #dc2626) brightness(1.5); }
+}
+
+/* ==========================================================================
+   18. MEJORA VISUAL DE SPRITES ARCADE (METAL SLUG / MEGA MAN / ADVANCE WARS)
+   ========================================================================== */
+.crew-token, .vehicle-token {
+  transform-origin: 0px 0px;
+  transition: filter 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.crew-token text, .vehicle-token text {
+  font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Arial, sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.crew-status-label {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.9));
+}
+
+/* ==========================================================================
+   20. EMOTES RETRO ANIMADOS DURANTE FAENA (DRAGON BALL, POKÉMON, PACMAN, NAVIDAD)
+   ========================================================================== */
+.crew-retro-bubble {
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
+  animation: bubblePopIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform-origin: center bottom;
+}
+
+@keyframes bubblePopIn {
+  0% { transform: scale(0) translateY(10px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Esfera Ki de Dragon Ball */
+.ki-sphere-burst {
+  animation: kiPulsate 0.25s infinite alternate ease-in-out;
+  transform-origin: center;
+}
+@keyframes kiPulsate {
+  0% { r: 6px; fill: #facc15; filter: drop-shadow(0 0 8px #facc15); }
+  100% { r: 10px; fill: #ffffff; filter: drop-shadow(0 0 18px #f59e0b) drop-shadow(0 0 28px #ef4444); }
+}
+
+/* Pacman animado comiendo bolitas */
+.pacman-mouth {
+  animation: pacmanChomp 0.28s infinite alternate ease-in-out;
+  transform-origin: 0px 0px;
+}
+@keyframes pacmanChomp {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-35deg); }
+}
+
+/* Rayo Pikachu */
+.pikachu-spark-bolt {
+  animation: pikaFlash 0.15s infinite alternate steps(2, start);
+}
+@keyframes pikaFlash {
+  0% { opacity: 0.3; stroke: #ca8a04; }
+  100% { opacity: 1; stroke: #ffffff; filter: drop-shadow(0 0 8px #facc15); }
+}
+
+/* Luces Navideñas en Vehículos Auxiliares */
+.xmas-bulb-red {
+  animation: xmasFlashRed 0.6s infinite alternate ease-in-out;
+}
+.xmas-bulb-green {
+  animation: xmasFlashGreen 0.6s infinite alternate ease-in-out 0.3s;
+}
+.xmas-bulb-gold {
+  animation: xmasFlashGold 0.6s infinite alternate ease-in-out 0.15s;
+}
+
+@keyframes xmasFlashRed {
+  0% { fill: #7f1d1d; opacity: 0.4; }
+  100% { fill: #ef4444; opacity: 1; filter: drop-shadow(0 0 8px #ef4444); }
+}
+@keyframes xmasFlashGreen {
+  0% { fill: #064e3b; opacity: 0.4; }
+  100% { fill: #10b981; opacity: 1; filter: drop-shadow(0 0 8px #10b981); }
+}
+@keyframes xmasFlashGold {
+  0% { fill: #78350f; opacity: 0.4; }
+  100% { fill: #fbbf24; opacity: 1; filter: drop-shadow(0 0 8px #fbbf24); }
+}
+
+/* Gorrito de Navidad para Operario */
+.santa-pompon {
+  animation: pomponSway 0.7s infinite alternate ease-in-out;
+  transform-origin: 0px 0px;
+}
+@keyframes pomponSway {
+  0% { transform: rotate(-10deg); }
+  100% { transform: rotate(15deg); }
+}
+
+@keyframes ctxmenuAppear {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

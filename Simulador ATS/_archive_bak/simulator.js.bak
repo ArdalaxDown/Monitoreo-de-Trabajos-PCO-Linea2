@@ -1,0 +1,3114 @@
+/**
+ * ==============================================================================
+ * SIMULADOR ATS — MONITOREO DE TRABAJOS EN VÍA PRINCIPAL (OCIR LÍNEA 2)
+ * Motor Interactivo con Separación Obligatoria entre Vehículos (Cantón Buffer),
+ * Animaciones Ricas de Videojuego (Game-Feel & Game-Assets), Modo Zona Segura,
+ * Enclavamiento Estricto, D1/D2 Simétricos y Parte Diario Oficial para Firma SPCO
+ * ==============================================================================
+ */
+
+// ------------------------------------------------------------------------------
+// 1. TOPOLOGÍA DE VÍA PRINCIPAL (ETAPA 1A) - GEOMETRÍA OFICIAL HITACHI RAIL
+// ------------------------------------------------------------------------------
+const ZONAS_VIA = [
+  { id: 'Z-PV19-E20', name: 'PV19 a E20 Evitamiento', xStart: 50, xEnd: 380, v2Y: 220, v1Y: 330 },
+  { id: 'Z-E20', name: 'Estación E20 Evitamiento', xStart: 380, xEnd: 580, v2Y: 220, v1Y: 330, isStation: true },
+  { id: 'Z-E20-PV20', name: 'E20 Evitamiento a PV20 (CV-01)', xStart: 580, xEnd: 860, v2Y: 220, v1Y: 330 },
+  { id: 'Z-PV20-E21', name: 'PV20 a E21 Óvalo Santa Anita (Bretelle O)', xStart: 860, xEnd: 1160, v2Y: 220, v1Y: 330, hasBretelle: true },
+  { id: 'Z-E21', name: 'Estación E21 Óvalo Santa Anita', xStart: 1160, xEnd: 1360, v2Y: 220, v1Y: 330, isStation: true },
+  { id: 'Z-E21-PV21', name: 'E21 Óvalo a PV21 (Bretelle E)', xStart: 1360, xEnd: 1640, v2Y: 220, v1Y: 330, hasBretelle: true },
+  { id: 'Z-PV21-E22', name: 'PV21 a E22 Colectora Industrial', xStart: 1640, xEnd: 1800, v2Y: 220, v1Y: 330 },
+  { id: 'Z-E22', name: 'Estación E22 Colectora Industrial', xStart: 1800, xEnd: 2000, v2Y: 220, v1Y: 330, isStation: true },
+  { id: 'Z-E22-PV22', name: 'E22 Colectora a PV22 (CV-02)', xStart: 2000, xEnd: 2260, v2Y: 220, v1Y: 330 },
+  { id: 'Z-PV22-E23', name: 'PV22 a E23 Hermilio Valdizán', xStart: 2260, xEnd: 2420, v2Y: 220, v1Y: 330 },
+  { id: 'Z-E23', name: 'Estación E23 Hermilio Valdizán', xStart: 2420, xEnd: 2620, v2Y: 220, v1Y: 330, isStation: true },
+  { id: 'Z-E23-PV23', name: 'E23 a PV23 (Diagonal CV-03)', xStart: 2620, xEnd: 2860, v2Y: 220, v1Y: 330 },
+  { id: 'Z-RAMAL-PTSA-1', name: 'Enlace D1 hacia PTSA', xStart: 2860, xEnd: 3060, v2Y: 220, v1Y: 330, hasPtsa: true },
+  { id: 'Z-E24', name: 'Estación E24 Mercado Santa Anita', xStart: 3060, xEnd: 3260, v2Y: 220, v1Y: 330, isStation: true },
+  { id: 'Z-RAMAL-PTSA-2', name: 'Enlace D2 hacia PTSA', xStart: 3260, xEnd: 3450, v2Y: 220, v1Y: 330, hasPtsa: true },
+  { id: 'Z-PV24', name: 'PV24 Fondo de Saco Este', xStart: 3450, xEnd: 3510, v2Y: 220, v1Y: 330 }
+];
+
+// ------------------------------------------------------------------------------
+// ZONAS OFICIALES DE CATENARIA Y ENERGIZACIÓN (1500V DC) - METRO DE LIMA LÍNEA 2
+// ------------------------------------------------------------------------------
+const ZONAS_CATENARIA = [
+  {
+    id: 'Z-35',
+    num: 35,
+    name: 'Zona 35: PV19 hacia EVT andén vía 1',
+    via: 'V1',
+    y: 326,
+    xStart: 50,
+    xEnd: 580,
+    defaultCut: false
+  },
+  {
+    id: 'Z-36',
+    num: 36,
+    name: 'Zona 36: PV19 hacia EVT callao vía 2',
+    subtitle: 'Sin llegar al andén (desenergizada por defecto)',
+    via: 'V2',
+    y: 216,
+    xStart: 50,
+    xEnd: 380,
+    defaultCut: true // "Sin llegar al anden, esta zona para desenergizada"
+  },
+  {
+    id: 'Z-37',
+    num: 37,
+    name: 'Zona 37: EVT ATE hacia OVA ANDEN vía 1',
+    via: 'V1',
+    y: 326,
+    xStart: 580,
+    xEnd: 1360,
+    defaultCut: false
+  },
+  {
+    id: 'Z-38',
+    num: 38,
+    name: 'Zona 38: EVT ANDEN hacia OVA Callao vía 2',
+    via: 'V2',
+    y: 216,
+    xStart: 380,
+    xEnd: 1160,
+    defaultCut: false
+  },
+  {
+    id: 'Z-39',
+    num: 39,
+    name: 'Zona 39: OVA Ate hacia COL Anden vía 1',
+    via: 'V1',
+    y: 326,
+    xStart: 1360,
+    xEnd: 2000,
+    defaultCut: false
+  },
+  {
+    id: 'Z-40',
+    num: 40,
+    name: 'Zona 40: OVA ANDEN hacia COL Callao vía 2',
+    via: 'V2',
+    y: 216,
+    xStart: 1160,
+    xEnd: 1800,
+    defaultCut: false
+  },
+  {
+    id: 'Z-41',
+    num: 41,
+    name: 'Zona 41: COL Ate hacia MSA anden pasando por HVA vía 1',
+    via: 'V1',
+    y: 326,
+    xStart: 2000,
+    xEnd: 3260,
+    defaultCut: false
+  },
+  {
+    id: 'Z-42',
+    num: 42,
+    name: 'Zona 42: COL Anden hacia MSA ate pasando por HVA y la D1',
+    via: 'V2',
+    y: 216,
+    xStart: 1800,
+    xEnd: 3060,
+    hasD1: true,
+    defaultCut: false
+  },
+  {
+    id: 'Z-43',
+    num: 43,
+    name: 'Zona 43: MSA ate hacia PV24 vía 1',
+    via: 'V1',
+    y: 326,
+    xStart: 3260,
+    xEnd: 3510,
+    defaultCut: false
+  },
+  {
+    id: 'Z-44',
+    num: 44,
+    name: 'Zona 44: MSA Anden hacia PV24 y la D2',
+    via: 'V2',
+    y: 216,
+    xStart: 3060,
+    xEnd: 3510,
+    hasD2: true,
+    defaultCut: false
+  }
+];
+
+// ------------------------------------------------------------------------------
+// 2. ESTADO GLOBAL
+// ------------------------------------------------------------------------------
+const appState = {
+  crews: [],
+  vehicles: [],
+  completedJobs: [], // Trabajos concluidos archivados para el relevo y SPCO
+  historyLog: [],
+  activeTab: 'all',  // 'all' | 'crews' | 'vehicles' | 'completed'
+  searchQuery: '',
+  selectedTokenForQuickEdit: null,
+  
+  // Control de Catenaria y Tensión (1500V DC)
+  catenary: {
+    deenergizedZones: ['Z-36'], // Zona 36 para desenergizada por defecto
+    interactiveMode: false // Modo de clic directo en vía
+  },
+  
+  // Pegman Drag State
+  isDraggingPegman: false,
+  draggedType: null, // 'crew' | 'vehicle'
+  reassigningEntity: null, // Entidad preexistente que se está reubicando o ampliando
+  hoveredVia: 'V2',  // 'V1' | 'V2'
+  draggedZonesSet: new Set(),
+  hasPaintedMultiZones: false,
+  isPaintingWithRightClick: false,
+  isCurrentHoverForbidden: false,
+  forbiddenReason: '',
+  
+  // Aparatos de Vía
+  switchesState: {
+    'CV-01': 'direct',
+    'BT-01': 'direct',
+    'BT-02': 'direct',
+    'CV-02': 'direct',
+    'CV-03': 'direct',
+    'D1': 'direct',
+    'D2': 'direct'
+  },
+  
+  // Audio Web Audio API
+  audioEnabled: true,
+  audioCtx: null,
+  
+  // ViewBox (3550 px ancho, 520 px alto)
+  viewBox: { x: 0, y: 0, width: 3550, height: 520 },
+  isPanning: false,
+  startPan: { x: 0, y: 0 },
+  
+  STORAGE_KEY: 'ATS_REPLICA_VP_V7_ULTIMATE'
+};
+
+// ------------------------------------------------------------------------------
+// 3. SINTETIZADOR DE AUDIO RETRO DE VIDEOJUEGOS (WEB AUDIO API)
+// ------------------------------------------------------------------------------
+function getAudioContext() {
+  if (!appState.audioCtx) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (AudioContext) {
+      appState.audioCtx = new AudioContext();
+    }
+  }
+  if (appState.audioCtx && appState.audioCtx.state === 'suspended') {
+    appState.audioCtx.resume();
+  }
+  return appState.audioCtx;
+}
+
+function playSound(type) {
+  if (!appState.audioEnabled) return;
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    
+    if (type === 'coin' || type === 'drop') {
+      // Moneda de Mario Bros (B5 -> E6)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(987.77, now); // B5
+      osc.frequency.setValueAtTime(1318.51, now + 0.08); // E6
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.setValueAtTime(0.12, now + 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } 
+    else if (type === '1up' || type === 'finish' || type === 'safe') {
+      // Fanfarria arpegio de 1-Up / Tarea completada estilo retro
+      const notes = [330, 392, 659, 523, 587, 784]; // E4, G4, E5, C5, D5, G5
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+        gain.gain.setValueAtTime(0.09, now + idx * 0.06);
+        gain.gain.linearRampToValueAtTime(0.001, now + idx * 0.06 + 0.09);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.06);
+        osc.stop(now + idx * 0.06 + 0.09);
+      });
+    }
+    else if (type === 'jump' || type === 'switch' || type === 'warp') {
+      // Sonido de salto / palanca (frecuencia ascendente)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.exponentialRampToValueAtTime(650, now + 0.12);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.12);
+    }
+    else if (type === 'laser' || type === 'paint') {
+      // Chirp láser 8-bit
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.exponentialRampToValueAtTime(140, now + 0.06);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.06);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.06);
+    }
+    else if (type === 'forbidden' || type === 'hazard' || type === 'alert') {
+      // Alarma de advertencia / choque estilo arcade
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.setValueAtTime(160, now + 0.08);
+      osc.frequency.setValueAtTime(320, now + 0.16);
+      osc.frequency.setValueAtTime(140, now + 0.24);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    }
+    else if (type === 'click') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(700, now);
+      osc.frequency.exponentialRampToValueAtTime(350, now + 0.03);
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.03);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.03);
+    }
+  } catch (e) {
+    console.warn('Audio no disponible', e);
+  }
+}
+
+// ------------------------------------------------------------------------------
+// 4. INICIALIZACIÓN
+// ------------------------------------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+  initClock();
+  initSoundToggle();
+  initQuickNav();
+  initTrackZones();
+  initPanZoomControls();
+  initPegmanMultiZoneDrag();
+  initInterlockingSwitchesAndSignals();
+  initQuickEditCard();
+  initModals();
+  initDockTabsAndSearch();
+  initReportAndExport();
+  initDailySheetModal();
+  initCatenaryControl();
+  
+  loadPersistedState();
+  renderAll();
+  initAnimationEngine();
+  
+  showToast('Simulador ATS L2: Enclavamiento con Cantón Buffer entre vehículos y sprites ricos activos.', 'info');
+});
+
+function initClock() {
+  const clockEl = document.getElementById('clock-display');
+  function update() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0');
+    const mins = String(now.getMinutes()).padStart(2, '0');
+    const secs = String(now.getSeconds()).padStart(2, '0');
+    clockEl.textContent = `${hours}:${mins}:${secs}`;
+  }
+  update();
+  setInterval(update, 1000);
+}
+
+function initSoundToggle() {
+  const btn = document.getElementById('btn-sound-toggle');
+  const icon = document.getElementById('sound-icon');
+  const text = document.getElementById('sound-text');
+  
+  btn.addEventListener('click', () => {
+    appState.audioEnabled = !appState.audioEnabled;
+    if (appState.audioEnabled) {
+      btn.classList.add('sound-on');
+      icon.textContent = '🔊';
+      text.textContent = 'Audio ATS';
+      playSound('coin');
+      showToast('Audio ATS activado', 'success');
+    } else {
+      btn.classList.remove('sound-on');
+      icon.textContent = '🔇';
+      text.textContent = 'Silenciado';
+      showToast('Audio silenciado', 'info');
+    }
+    persistState();
+  });
+}
+
+function initQuickNav() {
+  document.querySelectorAll('#station-quicknav .nav-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const targetX = parseFloat(pill.getAttribute('data-x'));
+      if (!isNaN(targetX)) {
+        smoothGlideToX(targetX);
+        playSound('jump');
+      }
+    });
+  });
+}
+
+function smoothGlideToX(targetX) {
+  const windowWidth = 1250;
+  const targetViewX = Math.max(0, Math.min(3550 - windowWidth, targetX - windowWidth / 2));
+  
+  const startX = appState.viewBox.x;
+  const startTime = performance.now();
+  const duration = 400;
+  
+  function step(time) {
+    const elapsed = time - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    
+    appState.viewBox.x = startX + (targetViewX - startX) * eased;
+    appState.viewBox.y = 20;
+    appState.viewBox.width = windowWidth;
+    appState.viewBox.height = 420;
+    
+    const svg = document.getElementById('track-svg');
+    svg.setAttribute('viewBox', `${appState.viewBox.x} ${appState.viewBox.y} ${appState.viewBox.width} ${appState.viewBox.height}`);
+    
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+// ------------------------------------------------------------------------------
+// 5. ENCLAVAMIENTO DE SEGURIDAD ATS (SEPARACIÓN OBLIGATORIA ENTRE VEHÍCULOS)
+// ------------------------------------------------------------------------------
+
+/**
+ * Verificación estricta de incompatibilidad:
+ * 1. Personal a pie vs Vehículo:
+ *    - Si el personal está en ZONA SEGURA (inSafeZone === true), la vía está despejada y los vehículos SÍ pueden ingresar.
+ *    - Si el personal está EN VÍA ACTIVA (inSafeZone === false), se bloquea cualquier vehículo por peligro de arrollamiento.
+ * 2. Vehículo vs Vehículo:
+ *    - Dos vehículos NO pueden coexistir en la misma zona en la misma vía.
+ *    - Además, DEBEN DEJAR MÍNIMO 1 CANTÓN LIBRE DE SEPARACIÓN (zona buffer de seguridad por frenado).
+ */
+function checkZonesConflict(zoneIds, via, entityType, ignoreEntityId = null) {
+  if (!zoneIds || zoneIds.length === 0) return { conflict: false, reason: '' };
+  
+  const zoneList = Array.isArray(zoneIds) ? zoneIds : Array.from(zoneIds);
+  const targetIndices = zoneList.map(id => ZONAS_VIA.findIndex(z => z.id === id)).filter(i => i !== -1);
+  if (targetIndices.length === 0) return { conflict: false, reason: '' };
+  
+  const targetMin = Math.min(...targetIndices);
+  const targetMax = Math.max(...targetIndices);
+  
+  if (entityType === 'vehicle') {
+    // 1. Verificar si hay cuadrillas a pie activas en el riel (no replegadas en zona segura)
+    const conflictCrew = appState.crews.find(c => 
+      !c.inSafeZone && c.via === via && c.zones.some(z => zoneList.includes(z))
+    );
+    if (conflictCrew) {
+      return {
+        conflict: true,
+        reason: `¡PROHIBIDO! Incompatibilidad ATS en ${via}: La cuadrilla "${conflictCrew.responsible}" está activa sobre el riel. Para autorizar paso de vehículo, replegarla a [Zona Segura / Andén].`
+      };
+    }
+    
+    // 2. Verificar separación con otros vehículos en la misma vía (Prohibida coexistencia y mínimo 1 cantón buffer libre)
+    for (const v of appState.vehicles) {
+      if (ignoreEntityId && v.id === ignoreEntityId) continue;
+      if (v.via !== via) continue;
+      
+      const vIndices = v.zones.map(id => ZONAS_VIA.findIndex(z => z.id === id)).filter(i => i !== -1);
+      if (vIndices.length === 0) continue;
+      
+      const vMin = Math.min(...vIndices);
+      const vMax = Math.max(...vIndices);
+      
+      // Coexistencia en el mismo cantón
+      if (!(targetMax < vMin || targetMin > vMax)) {
+        return {
+          conflict: true,
+          reason: `¡PROHIBIDO! Incompatibilidad ATS en ${via}: El vehículo auxiliar "${v.vehicleType}" ya opera en esta misma zona. Prohibida la coexistencia en el mismo cantón por riesgo de colisión.`
+        };
+      }
+      
+      // Distancia de separación: mínimo 1 cantón libre de buffer
+      const gap = targetMin > vMax ? (targetMin - vMax - 1) : (vMin - targetMax - 1);
+      if (gap < 1) {
+        return {
+          conflict: true,
+          reason: `¡PROHIBIDO! Distancia de seguridad ATS insuficiente en ${via}: Se exige mínimo 1 cantón de seguridad libre entre vehículos auxiliares ("${v.vehicleType}") como margen de frenado.`
+        };
+      }
+    }
+  } else if (entityType === 'crew') {
+    // Si se introduce una cuadrilla a pie en una zona ocupada por un vehículo auxiliar
+    const conflictVehicle = appState.vehicles.find(v => 
+      v.via === via && v.zones.some(z => zoneList.includes(z))
+    );
+    if (conflictVehicle) {
+      return {
+        conflict: true,
+        reason: `¡PROHIBIDO! Incompatibilidad ATS en ${via}: El vehículo "${conflictVehicle.vehicleType}" está en maniobra. No se autoriza personal en vía activa.`
+      };
+    }
+  }
+  
+  return { conflict: false, reason: '' };
+}
+
+function initPegmanMultiZoneDrag() {
+  const ghost = document.getElementById('pegman-drag-ghost');
+  const ghostEmoji = document.getElementById('ghost-emoji');
+  const ghostViaBadge = document.getElementById('ghost-via-badge');
+  const prohibitionHud = document.getElementById('prohibition-hud');
+  const prohibitionText = document.getElementById('prohibition-text');
+  
+  const chipCrew = document.getElementById('chip-crew');
+  const chipVehicle = document.getElementById('chip-vehicle');
+  
+  window.addEventListener('contextmenu', (e) => {
+    if (appState.isDraggingPegman) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  }, { capture: true });
+  
+  function startDragging(type, clientX, clientY) {
+    appState.isDraggingPegman = true;
+    appState.draggedType = type;
+    appState.hoveredVia = 'V2';
+    appState.draggedZonesSet.clear();
+    appState.hasPaintedMultiZones = false;
+    appState.isPaintingWithRightClick = false;
+    appState.isCurrentHoverForbidden = false;
+    appState.forbiddenReason = '';
+    
+    ghostEmoji.textContent = type === 'crew' ? '👷' : '🚜';
+    if (ghostViaBadge) {
+      ghostViaBadge.textContent = 'VÍA 2 ◄ (CALLAO)';
+      ghostViaBadge.className = 'ghost-via-badge via-v2';
+    }
+    
+    ghost.style.display = 'flex';
+    ghost.style.flexDirection = 'column';
+    ghost.style.alignItems = 'center';
+    ghost.style.left = `${clientX}px`;
+    ghost.style.top = `${clientY}px`;
+    
+    playSound('jump');
+  }
+  
+  chipCrew.addEventListener('mousedown', (e) => {
+    if (e.button === 0) {
+      e.preventDefault();
+      startDragging('crew', e.clientX, e.clientY);
+    }
+  });
+  
+  chipVehicle.addEventListener('mousedown', (e) => {
+    if (e.button === 0) {
+      e.preventDefault();
+      startDragging('vehicle', e.clientX, e.clientY);
+    }
+  });
+  
+  chipCrew.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    startDragging('crew', touch.clientX, touch.clientY);
+  }, { passive: true });
+  
+  chipVehicle.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    startDragging('vehicle', touch.clientX, touch.clientY);
+  }, { passive: true });
+  
+  window.addEventListener('mousemove', (e) => {
+    if (!appState.isDraggingPegman) return;
+    handlePegmanHoverAndPaint(e.clientX, e.clientY, e.buttons);
+  });
+  
+  window.addEventListener('touchmove', (e) => {
+    if (!appState.isDraggingPegman) return;
+    const touch = e.touches[0];
+    handlePegmanHoverAndPaint(touch.clientX, touch.clientY, 1);
+  }, { passive: true });
+  
+  window.addEventListener('mousedown', (e) => {
+    if (appState.isDraggingPegman && e.button === 2) {
+      e.preventDefault();
+      e.stopPropagation();
+      appState.isPaintingWithRightClick = true;
+      appState.hasPaintedMultiZones = true;
+      
+      const svgPoint = getSvgPoint(e.clientX, e.clientY);
+      const targetVia = svgPoint.y >= 275 ? 'V1' : 'V2';
+      appState.hoveredVia = targetVia;
+      
+      const hitZone = ZONAS_VIA.find(z => svgPoint.x >= z.xStart && svgPoint.x <= z.xEnd);
+      if (hitZone) {
+        if (!appState.draggedZonesSet.has(hitZone.id)) {
+          appState.draggedZonesSet.add(hitZone.id);
+          playSound('laser');
+        }
+        
+        const conflict = checkZonesConflict(Array.from(appState.draggedZonesSet), targetVia, appState.draggedType);
+        if (conflict.conflict) {
+          appState.isCurrentHoverForbidden = true;
+          appState.forbiddenReason = conflict.reason;
+          prohibitionHud.style.display = 'flex';
+          prohibitionHud.style.left = `${e.clientX}px`;
+          prohibitionHud.style.top = `${e.clientY - 50}px`;
+          prohibitionText.textContent = conflict.reason;
+          if (ghostViaBadge) {
+            ghostViaBadge.textContent = '🚫 PROHIBIDO';
+            ghostViaBadge.className = 'ghost-via-badge via-forbidden';
+          }
+        } else {
+          clearForbidden();
+        }
+        renderDragSelectionSpan(targetVia);
+      }
+    }
+  }, { capture: true });
+  
+  window.addEventListener('mouseup', (e) => {
+    if (appState.isDraggingPegman && e.button === 2) {
+      e.preventDefault();
+      appState.isPaintingWithRightClick = false;
+    }
+  }, { capture: true });
+  
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && appState.isDraggingPegman) {
+      ghost.style.display = 'none';
+      clearForbidden();
+      clearDragSelectionSpan();
+      appState.isDraggingPegman = false;
+      appState.draggedZonesSet.clear();
+      appState.hasPaintedMultiZones = false;
+      showToast('Arrastre cancelado por el operador', 'info');
+    }
+  });
+  
+  function handlePegmanHoverAndPaint(clientX, clientY, buttons) {
+    ghost.style.left = `${clientX}px`;
+    ghost.style.top = `${clientY}px`;
+    
+    const svgPoint = getSvgPoint(clientX, clientY);
+    const isInsideRailArea = svgPoint.x >= 40 && svgPoint.x <= 3520 && svgPoint.y >= 40 && svgPoint.y <= 480;
+    const targetVia = svgPoint.y >= 275 ? 'V1' : 'V2';
+    const viaChanged = appState.hoveredVia !== targetVia;
+    appState.hoveredVia = targetVia;
+    
+    if (ghostViaBadge && !appState.isCurrentHoverForbidden) {
+      ghostViaBadge.textContent = targetVia === 'V1' ? 'VÍA 1 ► (HACIA ATE)' : 'VÍA 2 ◄ (HACIA CALLAO)';
+      ghostViaBadge.className = `ghost-via-badge via-${targetVia.toLowerCase()}`;
+    }
+    
+    const hitZone = ZONAS_VIA.find(z => svgPoint.x >= z.xStart && svgPoint.x <= z.xEnd);
+    
+    if (hitZone && isInsideRailArea) {
+      const isRightClickPressed = (buttons & 2) === 2 || appState.isPaintingWithRightClick;
+      
+      if (isRightClickPressed) {
+        appState.hasPaintedMultiZones = true;
+        if (!appState.draggedZonesSet.has(hitZone.id)) {
+          appState.draggedZonesSet.add(hitZone.id);
+          playSound('laser');
+        }
+      } else {
+        if (!appState.hasPaintedMultiZones || viaChanged) {
+          appState.hasPaintedMultiZones = false;
+          appState.draggedZonesSet.clear();
+          appState.draggedZonesSet.add(hitZone.id);
+        }
+      }
+      
+      const conflict = checkZonesConflict(Array.from(appState.draggedZonesSet), targetVia, appState.draggedType);
+      
+      if (conflict.conflict) {
+        if (!appState.isCurrentHoverForbidden) {
+          playSound('hazard');
+        }
+        appState.isCurrentHoverForbidden = true;
+        appState.forbiddenReason = conflict.reason;
+        
+        prohibitionHud.style.display = 'flex';
+        prohibitionHud.style.left = `${clientX}px`;
+        prohibitionHud.style.top = `${clientY - 50}px`;
+        prohibitionText.textContent = conflict.reason;
+        
+        if (ghostViaBadge) {
+          ghostViaBadge.textContent = '🚫 PROHIBIDO';
+          ghostViaBadge.className = 'ghost-via-badge via-forbidden';
+        }
+      } else {
+        clearForbidden();
+      }
+      
+      renderDragSelectionSpan(targetVia);
+    } else {
+      clearForbidden();
+    }
+  }
+  
+  function clearForbidden() {
+    appState.isCurrentHoverForbidden = false;
+    appState.forbiddenReason = '';
+    prohibitionHud.style.display = 'none';
+    if (ghostViaBadge && appState.isDraggingPegman && appState.hoveredVia) {
+      ghostViaBadge.textContent = appState.hoveredVia === 'V1' ? 'VÍA 1 ► (HACIA ATE)' : 'VÍA 2 ◄ (HACIA CALLAO)';
+      ghostViaBadge.className = `ghost-via-badge via-${appState.hoveredVia.toLowerCase()}`;
+    }
+  }
+  
+  window.addEventListener('mouseup', (e) => {
+    if (!appState.isDraggingPegman) return;
+    if (e.button === 0) {
+      finalizeDrop(e.clientX, e.clientY);
+    }
+  });
+  
+  window.addEventListener('touchend', (e) => {
+    if (!appState.isDraggingPegman) return;
+    const touch = e.changedTouches[0];
+    finalizeDrop(touch.clientX, touch.clientY);
+  });
+  
+  function finalizeDrop(clientX, clientY) {
+    ghost.style.display = 'none';
+    
+    if (!appState.isDraggingPegman) return;
+    
+    const via = appState.hoveredVia || 'V2';
+    const selectedZonesList = Array.from(appState.draggedZonesSet);
+    
+    // Verificación estricta de enclavamiento
+    const conflict = checkZonesConflict(selectedZonesList, via, appState.draggedType);
+    
+    if (conflict.conflict || appState.isCurrentHoverForbidden) {
+      playSound('hazard');
+      showToast(`🚫 BLOQUEADO POR ENCLAVAMIENTO ATS: ${conflict.reason || appState.forbiddenReason}`, 'danger');
+      clearForbidden();
+      clearDragSelectionSpan();
+      appState.isDraggingPegman = false;
+      appState.draggedZonesSet.clear();
+      appState.hasPaintedMultiZones = false;
+      return;
+    }
+    
+    if (selectedZonesList.length === 0) {
+      clearForbidden();
+      clearDragSelectionSpan();
+      appState.isDraggingPegman = false;
+      appState.hasPaintedMultiZones = false;
+      return;
+    }
+    
+    clearForbidden();
+    clearDragSelectionSpan();
+    
+    const sortedZones = selectedZonesList
+      .map(id => ZONAS_VIA.find(z => z.id === id))
+      .filter(Boolean)
+      .sort((a, b) => a.xStart - b.xStart);
+    
+    const xMin = sortedZones[0].xStart;
+    const xMax = sortedZones[sortedZones.length - 1].xEnd;
+    const centerX = xMin + (xMax - xMin) / 2;
+    
+    triggerPlacementRipple(clientX, clientY);
+    playSound('coin');
+    
+    const curTime = new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    
+        // SI ESTÁBAMOS REUBICANDO O AMPLIANDO UN TRABAJO PREEXISTENTE
+    if (appState.reassigningEntity) {
+      const existing = appState.reassigningEntity;
+      existing.via = via;
+      existing.zones = sortedZones.map(z => z.id);
+      existing.zoneLabel = sortedZones.length > 1 ? (sortedZones[0].name + ' ➔ ' + sortedZones[sortedZones.length - 1].name) : sortedZones[0].name;
+      existing.xMin = xMin;
+      existing.xMax = xMax;
+      existing.x = centerX;
+      
+      appState.historyLog.push({
+        timestamp: new Date().toISOString(),
+        action: 'REUBICACION_TRAMO',
+        detail: (existing.type === 'crew' ? 'Cuadrilla ' + existing.responsible : 'Vehículo ' + existing.vehicleType) + ' reubicado/ampliado en ' + existing.zoneLabel + ' (' + via + ').'
+      });
+      
+      showToast('✔ ' + (existing.responsible || existing.vehicleType) + ' reubicado/ampliado exitosamente en ' + existing.zoneLabel + ' (' + via + ').', 'success');
+      
+      appState.reassigningEntity = null;
+      appState.isDraggingPegman = false;
+      appState.hasPaintedMultiZones = false;
+      persistState();
+      renderAll();
+      return;
+    }
+    
+    if (appState.draggedType === 'crew') {
+      const crewCount = appState.crews.length + 1;
+      const newCrew = {
+        id: `CRW-${Date.now().toString().slice(-4)}`,
+        type: 'crew',
+        responsible: `Cuadrilla #${crewCount}`,
+        company: 'Mantenimiento de Vía',
+        count: 4,
+        radio: `Ch-02 / R${100 + crewCount}`,
+        via: via,
+        zones: sortedZones.map(z => z.id),
+        zoneLabel: sortedZones.length > 1 ? `${sortedZones[0].name} ➔ ${sortedZones[sortedZones.length - 1].name}` : sortedZones[0].name,
+        xMin: xMin,
+        xMax: xMax,
+        x: centerX,
+        speed: 16,
+        dir: 1,
+        isWorking: false,
+        inSafeZone: false,
+        workTimer: 0,
+        workCountdown: 6 + Math.random() * 4,
+        timeIn: curTime,
+        timeOut: '',
+        notes: 'Inspección y conservación de vía'
+      };
+      
+      appState.crews.push(newCrew);
+      appState.historyLog.push({
+        timestamp: new Date().toISOString(),
+        action: 'INGRESO_CUADRILLA',
+        detail: `Cuadrilla ${newCrew.responsible} autorizada en ${newCrew.zoneLabel} (${via}).`
+      });
+      
+      showToast(`👷 ${newCrew.responsible} en vía. Haz clic sobre ella o en Editar para ajustar datos o poner en Zona Segura.`, 'success');
+      
+    } else if (appState.draggedType === 'vehicle') {
+      const vehCount = appState.vehicles.length + 1;
+      const newVehicle = {
+        id: `VEH-${Date.now().toString().slice(-4)}`,
+        type: 'vehicle',
+        vehicleType: `Dresina D-0${Math.min(vehCount, 9)}`,
+        driver: `Operador ${vehCount}`,
+        leader: `Resp. Maniobra`,
+        company: 'Vía y Catenaria',
+        radio: `Ch-01 / Tráfico`,
+        via: via,
+        zones: sortedZones.map(z => z.id),
+        zoneLabel: sortedZones.length > 1 ? `${sortedZones[0].name} ➔ ${sortedZones[sortedZones.length - 1].name}` : sortedZones[0].name,
+        xMin: xMin,
+        xMax: xMax,
+        x: centerX,
+        speed: 28,
+        dir: 1,
+        timeIn: curTime,
+        timeOut: '',
+        notes: 'Maniobra de auscultación y catenaria'
+      };
+      
+      appState.vehicles.push(newVehicle);
+      appState.historyLog.push({
+        timestamp: new Date().toISOString(),
+        action: 'INGRESO_VEHICULO',
+        detail: `Vehículo ${newVehicle.vehicleType} en maniobra sobre ${newVehicle.zoneLabel} (${via}).`
+      });
+      
+      showToast(`🚜 ${newVehicle.vehicleType} en vía. Toca para editar o concluir.`, 'success');
+    }
+    
+    appState.isDraggingPegman = false;
+    appState.hasPaintedMultiZones = false;
+    persistState();
+    renderAll();
+  }
+}
+
+function renderDragSelectionSpan(via) {
+  const spanLayer = document.getElementById('drag-selection-layer');
+  if (!spanLayer) return;
+  spanLayer.innerHTML = '';
+  
+  if (appState.draggedZonesSet.size === 0) return;
+  
+  const sorted = Array.from(appState.draggedZonesSet)
+    .map(id => ZONAS_VIA.find(z => z.id === id))
+    .filter(Boolean)
+    .sort((a, b) => a.xStart - b.xStart);
+  
+  if (sorted.length === 0) return;
+  
+  const xMin = sorted[0].xStart;
+  const xMax = sorted[sorted.length - 1].xEnd;
+  const yTrack = via === 'V1' ? 330 : 220;
+  
+  const isForbidden = appState.isCurrentHoverForbidden;
+  const strokeColor = isForbidden ? '#ef4444' : (appState.draggedType === 'crew' ? '#f59e0b' : '#38bdf8');
+  
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', xMin);
+  rect.setAttribute('y', yTrack - 16);
+  rect.setAttribute('width', Math.max(30, xMax - xMin));
+  rect.setAttribute('height', 32);
+  rect.setAttribute('rx', '6');
+  rect.setAttribute('class', isForbidden ? 'hazard-laser-barrier' : '');
+  rect.setAttribute('fill', isForbidden ? 'rgba(239, 68, 68, 0.38)' : (appState.draggedType === 'crew' ? 'rgba(245, 158, 11, 0.25)' : 'rgba(56, 189, 248, 0.25)'));
+  rect.setAttribute('stroke', strokeColor);
+  rect.setAttribute('stroke-width', isForbidden ? '3.5' : '2.5');
+  rect.setAttribute('stroke-dasharray', isForbidden ? '8 6' : 'none');
+  
+  const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+  text.setAttribute('x', xMin + (xMax - xMin) / 2);
+  text.setAttribute('y', via === 'V1' ? yTrack + 32 : yTrack - 22);
+  text.setAttribute('fill', isForbidden ? '#ef4444' : (appState.draggedType === 'crew' ? '#fbbf24' : '#38bdf8'));
+  text.setAttribute('font-size', '10.5');
+  text.setAttribute('font-weight', 'bold');
+  text.setAttribute('font-family', 'monospace');
+  text.setAttribute('text-anchor', 'middle');
+  const zoneSummary = sorted.length > 1 ? `${sorted[0].name.split(' ')[0]} ➔ ${sorted[sorted.length - 1].name.split(' ')[0]} (${sorted.length} tramos)` : sorted[0].name;
+  text.textContent = isForbidden 
+    ? `⚠️ [${via}] ¡ZONA BLOQUEADA POR RIESGO DE COLISIÓN!` 
+    : `[${via}] ${zoneSummary} (Click der: pintar más)`;
+  
+  spanLayer.appendChild(rect);
+  spanLayer.appendChild(text);
+}
+
+function clearDragSelectionSpan() {
+  const spanLayer = document.getElementById('drag-selection-layer');
+  if (spanLayer) spanLayer.innerHTML = '';
+}
+
+function getSvgPoint(clientX, clientY) {
+  const svg = document.getElementById('track-svg');
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function triggerPlacementRipple(clientX, clientY) {
+  const svg = document.getElementById('track-svg');
+  const ripplesLayer = document.getElementById('ripples-layer');
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+  
+  const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circle.setAttribute('cx', svgPt.x);
+  circle.setAttribute('cy', svgPt.y);
+  circle.setAttribute('r', '6');
+  circle.setAttribute('fill', 'none');
+  circle.setAttribute('stroke', '#38bdf8');
+  circle.setAttribute('class', 'placement-ripple');
+  
+  ripplesLayer.appendChild(circle);
+  setTimeout(() => circle.remove(), 1200);
+}
+
+// ------------------------------------------------------------------------------
+// 6. TARJETA DE EDICIÓN RÁPIDA (SIEMPRE VISIBLE EN PANTALLA)
+// ------------------------------------------------------------------------------
+function populateQuickEditZoneSelects() {
+  const startSelect = document.getElementById('quickcard-zone-start');
+  const endSelect = document.getElementById('quickcard-zone-end');
+  if (!startSelect || !endSelect) return;
+  
+  startSelect.innerHTML = '';
+  endSelect.innerHTML = '';
+  ZONAS_VIA.forEach((z, idx) => {
+    const optA = document.createElement('option');
+    optA.value = z.id;
+    optA.textContent = (idx + 1) + '. ' + z.name;
+    startSelect.appendChild(optA);
+
+    const optB = document.createElement('option');
+    optB.value = z.id;
+    optB.textContent = (idx + 1) + '. ' + z.name;
+    endSelect.appendChild(optB);
+  });
+}
+
+function updateQuickcardZoneSummary() {
+  const startSelect = document.getElementById('quickcard-zone-start');
+  const endSelect = document.getElementById('quickcard-zone-end');
+  const viaSelect = document.getElementById('quickcard-via');
+  const descInput = document.getElementById('quickcard-zones-desc');
+  if (!startSelect || !endSelect || !descInput || !viaSelect) return;
+  
+  const idxA = ZONAS_VIA.findIndex(z => z.id === startSelect.value);
+  const idxB = ZONAS_VIA.findIndex(z => z.id === endSelect.value);
+  if (idxA === -1 || idxB === -1) return;
+  
+  const minIdx = Math.min(idxA, idxB);
+  const maxIdx = Math.max(idxA, idxB);
+  const zonesSpan = ZONAS_VIA.slice(minIdx, maxIdx + 1);
+  const via = viaSelect.value || 'V2';
+  
+  const label = zonesSpan.length > 1 
+    ? (zonesSpan[0].name.split(' ')[0] + ' ➔ ' + zonesSpan[zonesSpan.length - 1].name.split(' ')[0] + ' (' + zonesSpan.length + ' tramos contiguos en ' + via + ')')
+    : (zonesSpan[0].name + ' (' + via + ')');
+  descInput.value = label;
+}
+
+function initQuickEditCard() {
+  populateQuickEditZoneSelects();
+  
+  const card = document.getElementById('token-quickcard');
+  const respInput = document.getElementById('quickcard-resp');
+  const compSelect = document.getElementById('quickcard-company');
+  const radioInput = document.getElementById('quickcard-radio');
+  const countInput = document.getElementById('quickcard-count');
+  const timeInInput = document.getElementById('quickcard-timein');
+  const timeOutInput = document.getElementById('quickcard-timeout');
+  const notesInput = document.getElementById('quickcard-notes');
+  const viaSelect = document.getElementById('quickcard-via');
+  const startSelect = document.getElementById('quickcard-zone-start');
+  const endSelect = document.getElementById('quickcard-zone-end');
+  const btnReassign = document.getElementById('quickcard-btn-reassign');
+  const btnSafeZone = document.getElementById('quickcard-btn-safezone');
+  const btnSave = document.getElementById('quickcard-btn-save');
+  const btnFinish = document.getElementById('quickcard-btn-finish');
+  const btnDel = document.getElementById('quickcard-btn-del');
+  const btnClose = document.getElementById('quickcard-close');
+  
+  if (startSelect) startSelect.addEventListener('change', updateQuickcardZoneSummary);
+  if (endSelect) endSelect.addEventListener('change', updateQuickcardZoneSummary);
+  if (viaSelect) viaSelect.addEventListener('change', updateQuickcardZoneSummary);
+  
+  // Botón para reubicar / ampliar en el mapa directamente
+  if (btnReassign) {
+    btnReassign.addEventListener('click', () => {
+      if (!appState.selectedTokenForQuickEdit) return;
+      const token = appState.selectedTokenForQuickEdit;
+      card.style.display = 'none';
+      
+      // Activar modo de reasignación pegman sobre entidad existente
+      appState.reassigningEntity = token;
+      appState.isDraggingPegman = true;
+      appState.draggedType = token.type;
+      appState.hoveredVia = token.via;
+      appState.draggedZonesSet.clear();
+      token.zones.forEach(zid => appState.draggedZonesSet.add(zid));
+      appState.hasPaintedMultiZones = token.zones.length > 1;
+      
+      const ghost = document.getElementById('pegman-drag-ghost');
+      const ghostEmoji = document.getElementById('ghost-emoji');
+      const ghostViaBadge = document.getElementById('ghost-via-badge');
+      if (ghost && ghostEmoji && ghostViaBadge) {
+        ghostEmoji.textContent = token.type === 'crew' ? '👷' : '🚜';
+        ghostViaBadge.textContent = token.via === 'V1' ? 'VÍA 1 ► (HACIA ATE)' : 'VÍA 2 ◄ (HACIA CALLAO)';
+        ghostViaBadge.className = 'ghost-via-badge via-' + token.via.toLowerCase();
+        ghost.style.display = 'flex';
+        ghost.style.left = '50vw';
+        ghost.style.top = '35vh';
+      }
+      
+      renderDragSelectionSpan(token.via);
+      playSound('jump');
+      showToast('📍 Mover/Ampliar ' + (token.responsible || token.vehicleType) + ': Pasa el mouse por la vía (clic derecho para más tramos) y suelta.', 'info');
+    });
+  }
+  
+  btnClose.addEventListener('click', () => {
+    card.style.display = 'none';
+    appState.selectedTokenForQuickEdit = null;
+  });
+  
+  btnSave.addEventListener('click', () => {
+    if (!appState.selectedTokenForQuickEdit) return;
+    const token = appState.selectedTokenForQuickEdit;
+    
+    // 1. Calcular nuevas zonas y vía desde los selectores
+    const newVia = (viaSelect ? viaSelect.value : token.via) || 'V2';
+    const sId = startSelect ? startSelect.value : token.zones[0];
+    const eId = endSelect ? endSelect.value : token.zones[token.zones.length - 1];
+    
+    const idxA = ZONAS_VIA.findIndex(z => z.id === sId);
+    const idxB = ZONAS_VIA.findIndex(z => z.id === eId);
+    const minIdx = Math.min(idxA !== -1 ? idxA : 0, idxB !== -1 ? idxB : 0);
+    const maxIdx = Math.max(idxA !== -1 ? idxA : 0, idxB !== -1 ? idxB : 0);
+    const selectedZones = ZONAS_VIA.slice(minIdx, maxIdx + 1);
+    const selectedZoneIds = selectedZones.map(z => z.id);
+    
+    // 2. Validar con enclavamiento ATS excluyendo a la misma entidad
+    const conflict = checkZonesConflict(selectedZoneIds, newVia, token.type, token.id);
+    if (conflict.conflict) {
+      playSound('hazard');
+      showToast('🚫 BLOQUEADO POR ENCLAVAMIENTO ATS: ' + conflict.reason, 'danger');
+      return;
+    }
+    
+    // 3. Aplicar reubicación o ampliación de tramo
+    const xMin = selectedZones[0].xStart;
+    const xMax = selectedZones[selectedZones.length - 1].xEnd;
+    const centerX = xMin + (xMax - xMin) / 2;
+    
+    const viaChanged = token.via !== newVia;
+    const zonesChanged = token.zones.join(',') !== selectedZoneIds.join(',');
+    
+    token.via = newVia;
+    token.zones = selectedZoneIds;
+    token.xMin = xMin;
+    token.xMax = xMax;
+    token.zoneLabel = selectedZones.length > 1 ? (selectedZones[0].name + ' ➔ ' + selectedZones[selectedZones.length - 1].name) : selectedZones[0].name;
+    
+    // Si cambió de tramo o vía, reposicionar suavemente dentro del nuevo cantón
+    if (viaChanged || zonesChanged) {
+      token.x = centerX;
+      appState.historyLog.push({
+        timestamp: new Date().toISOString(),
+        action: 'CAMBIO_TRAMO',
+        detail: (token.type === 'crew' ? 'Cuadrilla ' + token.responsible : 'Vehículo ' + token.vehicleType) + ' reubicado/ampliado a ' + token.zoneLabel + ' (' + newVia + ').'
+      });
+    }
+    
+    if (token.type === 'crew') {
+      token.responsible = respInput.value.trim() || token.responsible;
+      token.company = compSelect.value;
+      token.radio = radioInput.value.trim() || token.radio;
+      token.count = parseInt(countInput.value, 10) || token.count;
+      token.timeIn = timeInInput.value.trim() || token.timeIn;
+      token.timeOut = timeOutInput.value.trim() || token.timeOut;
+      token.notes = notesInput.value.trim() || token.notes;
+    } else {
+      token.vehicleType = respInput.value.trim() || token.vehicleType;
+      token.company = compSelect.value;
+      token.radio = radioInput.value.trim() || token.radio;
+      token.timeIn = timeInInput.value.trim() || token.timeIn;
+      token.timeOut = timeOutInput.value.trim() || token.timeOut;
+      token.notes = notesInput.value.trim() || token.notes;
+    }
+    
+    card.style.display = 'none';
+    playSound('coin');
+    persistState();
+    renderAll();
+    showToast('✔ Trabajo guardado y actualizado en ' + token.zoneLabel + ' (' + token.via + ').', 'success');
+  });
+  
+  if (btnSafeZone) {
+    btnSafeZone.addEventListener('click', () => {
+      if (!appState.selectedTokenForQuickEdit) return;
+      toggleSafeZone(appState.selectedTokenForQuickEdit.id);
+      card.style.display = 'none';
+    });
+  }
+  
+  btnFinish.addEventListener('click', () => {
+    if (!appState.selectedTokenForQuickEdit) return;
+    const token = appState.selectedTokenForQuickEdit;
+    const curTime = new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    const finalTimeOut = timeOutInput.value.trim() || curTime;
+    
+    concludeWorkJob(token.id, finalTimeOut, notesInput.value.trim() || token.notes);
+    card.style.display = 'none';
+  });
+  
+  btnDel.addEventListener('click', () => {
+    if (!appState.selectedTokenForQuickEdit) return;
+    if (appState.selectedTokenForQuickEdit.type === 'crew') {
+      removeCrew(appState.selectedTokenForQuickEdit.id);
+    } else {
+      removeVehicle(appState.selectedTokenForQuickEdit.id);
+    }
+    card.style.display = 'none';
+  });
+}
+
+function openQuickEditForToken(token, clientX, clientY) {
+  appState.selectedTokenForQuickEdit = token;
+  const card = document.getElementById('token-quickcard');
+  const title = document.getElementById('quickcard-title');
+  const respInput = document.getElementById('quickcard-resp');
+  const compSelect = document.getElementById('quickcard-company');
+  const radioInput = document.getElementById('quickcard-radio');
+  const countInput = document.getElementById('quickcard-count');
+  const countBox = document.getElementById('quickcard-count-box');
+  const timeInInput = document.getElementById('quickcard-timein');
+  const timeOutInput = document.getElementById('quickcard-timeout');
+  const notesInput = document.getElementById('quickcard-notes');
+  const zonesDesc = document.getElementById('quickcard-zones-desc');
+  const btnSafeZone = document.getElementById('quickcard-btn-safezone');
+  
+  const curTime = new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  
+  if (token.type === 'crew') {
+    title.innerHTML = `<span>👷</span> Editar Cuadrilla (${token.via}) <span style="cursor:pointer;" id="quickcard-close">✕</span>`;
+    respInput.value = token.responsible;
+    compSelect.value = token.company || 'Mantenimiento de Vía';
+    radioInput.value = token.radio;
+    countInput.value = token.count;
+    countBox.style.display = 'flex';
+    
+    if (btnSafeZone) {
+      btnSafeZone.style.display = 'inline-flex';
+      btnSafeZone.textContent = token.inSafeZone ? '🚶 Reanudar en Vía' : '🛡️ Mover a Andén (Zona Segura)';
+      btnSafeZone.className = `btn-table-action btn-safe-zone ${token.inSafeZone ? 'active-safe' : ''}`;
+    }
+  } else {
+    title.innerHTML = `<span>🚜</span> Editar Vehículo (${token.via}) <span style="cursor:pointer;" id="quickcard-close">✕</span>`;
+    respInput.value = token.vehicleType;
+    compSelect.value = token.company || 'Vía y Catenaria';
+    radioInput.value = token.radio;
+    countBox.style.display = 'none';
+    if (btnSafeZone) btnSafeZone.style.display = 'none';
+  }
+  
+  timeInInput.value = token.timeIn || curTime;
+  timeOutInput.value = token.timeOut || curTime;
+  notesInput.value = token.notes || '';
+  zonesDesc.value = token.zoneLabel || 'Zona asignada';
+  
+  const viaSelect = document.getElementById('quickcard-via');
+  const startSelect = document.getElementById('quickcard-zone-start');
+  const endSelect = document.getElementById('quickcard-zone-end');
+  
+  if (viaSelect) viaSelect.value = token.via || 'V2';
+  if (startSelect && token.zones && token.zones.length > 0) {
+    startSelect.value = token.zones[0];
+  }
+  if (endSelect && token.zones && token.zones.length > 0) {
+    endSelect.value = token.zones[token.zones.length - 1];
+  }
+  updateQuickcardZoneSummary();
+  
+  // Posicionamiento fixed con clamping dentro de la pantalla
+  const cardWidth = 360;
+  const cardHeight = 460;
+  let posX = clientX || (window.innerWidth / 2 - cardWidth / 2);
+  let posY = clientY ? (clientY - 140) : (window.innerHeight / 2 - cardHeight / 2);
+  
+  posX = Math.max(20, Math.min(posX, window.innerWidth - cardWidth - 25));
+  posY = Math.max(65, Math.min(posY, window.innerHeight - cardHeight - 25));
+  
+  card.style.left = `${posX}px`;
+  card.style.top = `${posY}px`;
+  card.style.display = 'flex';
+  
+  document.getElementById('quickcard-close').onclick = () => {
+    card.style.display = 'none';
+  };
+}
+
+// ------------------------------------------------------------------------------
+// 7. ZONA SEGURA / ANDÉN (DESPEJE TEMPORAL DE VÍA PARA PASO DE VEHÍCULOS)
+// ------------------------------------------------------------------------------
+window.toggleSafeZone = function(crewId, event) {
+  if (event) event.stopPropagation();
+  const crew = appState.crews.find(c => c.id === crewId);
+  if (!crew) return;
+  
+  crew.inSafeZone = !crew.inSafeZone;
+  
+  if (crew.inSafeZone) {
+    crew.isWorking = false;
+    playSound('1up');
+    showToast(`🛡️ Cuadrilla ${crew.responsible} en ZONA SEGURA (Andén). Vía libre para paso de vehículos.`, 'success');
+    appState.historyLog.push({
+      timestamp: new Date().toISOString(),
+      action: 'REPLIEGUE_ZONA_SEGURA',
+      detail: `Cuadrilla ${crew.responsible} se replegó a zona segura en ${crew.zoneLabel} (${crew.via}).`
+    });
+  } else {
+    playSound('jump');
+    showToast(`🚶 Cuadrilla ${crew.responsible} reanudó labores activas sobre el riel.`, 'info');
+    appState.historyLog.push({
+      timestamp: new Date().toISOString(),
+      action: 'RETORNO_A_VIA',
+      detail: `Cuadrilla ${crew.responsible} retomó labores en vía principal (${crew.via}).`
+    });
+  }
+  
+  persistState();
+  renderAll();
+};
+
+function concludeWorkJob(jobId, finalTimeOut, finalNotes) {
+  let item = null;
+  const cIdx = appState.crews.findIndex(c => c.id === jobId);
+  if (cIdx !== -1) {
+    item = appState.crews.splice(cIdx, 1)[0];
+  } else {
+    const vIdx = appState.vehicles.findIndex(v => v.id === jobId);
+    if (vIdx !== -1) {
+      item = appState.vehicles.splice(vIdx, 1)[0];
+    }
+  }
+  
+  if (!item) return;
+  
+  item.timeOut = finalTimeOut || new Date().toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  item.notes = finalNotes || item.notes || 'Trabajo completado y vía despejada';
+  item.status = 'CONCLUIDO';
+  item.completedTimestamp = new Date().toISOString();
+  
+  appState.completedJobs.unshift(item);
+  appState.historyLog.push({
+    timestamp: new Date().toISOString(),
+    action: 'TRABAJO_CONCLUIDO',
+    detail: `${item.type === 'crew' ? 'Cuadrilla ' + item.responsible : 'Vehículo ' + item.vehicleType} concluyó trabajo en ${item.zoneLabel} (${item.via}) a las ${item.timeOut}.`
+  });
+  
+  playSound('1up');
+  persistState();
+  renderAll();
+  showToast(`✔ Trabajo ${item.responsible || item.vehicleType} marcado como CONCLUIDO y archivado.`, 'success');
+}
+
+// ------------------------------------------------------------------------------
+// 8. TRAMOS SVG Y HITBOXES
+// ------------------------------------------------------------------------------
+function initTrackZones() {
+  const zonesLayer = document.getElementById('track-zones-layer');
+  
+  ZONAS_VIA.forEach(zone => {
+    const gZone = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gZone.setAttribute('class', 'svg-track-zone');
+    gZone.setAttribute('id', `hitbox-${zone.id}`);
+    gZone.setAttribute('data-zone-id', zone.id);
+    
+    const rectV2 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rectV2.setAttribute('x', zone.xStart);
+    rectV2.setAttribute('y', zone.v2Y - 14);
+    rectV2.setAttribute('width', zone.xEnd - zone.xStart);
+    rectV2.setAttribute('height', 28);
+    rectV2.setAttribute('fill', 'rgba(56, 189, 248, 0.001)');
+    rectV2.setAttribute('data-via', 'V2');
+    
+    const rectV1 = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rectV1.setAttribute('x', zone.xStart);
+    rectV1.setAttribute('y', zone.v1Y - 14);
+    rectV1.setAttribute('width', zone.xEnd - zone.xStart);
+    rectV1.setAttribute('height', 28);
+    rectV1.setAttribute('fill', 'rgba(56, 189, 248, 0.001)');
+    rectV1.setAttribute('data-via', 'V1');
+    
+    gZone.appendChild(rectV2);
+    gZone.appendChild(rectV1);
+    
+    zonesLayer.appendChild(gZone);
+  });
+}
+
+// ------------------------------------------------------------------------------
+// 9. APARATOS DE VÍA INTERACTIVOS
+// ------------------------------------------------------------------------------
+function initInterlockingSwitchesAndSignals() {
+  document.querySelectorAll('.switch-group').forEach(sw => {
+    sw.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const swId = sw.getAttribute('data-switch-id');
+      if (!swId) return;
+      
+      const current = appState.switchesState[swId] || 'direct';
+      const next = current === 'direct' ? 'diverted' : 'direct';
+      appState.switchesState[swId] = next;
+      
+      if (next === 'diverted') {
+        sw.classList.add('switch-diverted');
+        showToast(`Cambiavías ${swId}: Vía Desviada`, 'warning');
+      } else {
+        sw.classList.remove('switch-diverted');
+        showToast(`Cambiavías ${swId}: Vía Directa`, 'info');
+      }
+      
+      playSound('jump');
+      persistState();
+    });
+  });
+}
+
+// ------------------------------------------------------------------------------
+// 10. CONTROLES DE ZOOM Y PANEO
+// ------------------------------------------------------------------------------
+function initPanZoomControls() {
+  const svg = document.getElementById('track-svg');
+  const container = document.getElementById('svg-pan-zoom-container');
+  
+  function applyViewBox() {
+    svg.setAttribute('viewBox', `${appState.viewBox.x} ${appState.viewBox.y} ${appState.viewBox.width} ${appState.viewBox.height}`);
+  }
+  
+  document.getElementById('btn-zoom-in').addEventListener('click', () => {
+    zoomByFactor(0.85);
+  });
+  
+  document.getElementById('btn-zoom-out').addEventListener('click', () => {
+    zoomByFactor(1.18);
+  });
+  
+  document.getElementById('btn-zoom-reset').addEventListener('click', () => {
+    appState.viewBox = { x: 0, y: 0, width: 3550, height: 520 };
+    applyViewBox();
+    playSound('coin');
+  });
+  
+  document.getElementById('btn-zoom-fit').addEventListener('click', () => {
+    appState.viewBox = { x: 0, y: 0, width: 3550, height: 520 };
+    applyViewBox();
+    playSound('coin');
+  });
+  
+  function zoomByFactor(factor) {
+    const newWidth = appState.viewBox.width * factor;
+    const newHeight = appState.viewBox.height * factor;
+    
+    if (newWidth >= 500 && newWidth <= 6000) {
+      const dw = newWidth - appState.viewBox.width;
+      const dh = newHeight - appState.viewBox.height;
+      appState.viewBox.x -= dw / 2;
+      appState.viewBox.y -= dh / 2;
+      appState.viewBox.width = newWidth;
+      appState.viewBox.height = newHeight;
+      applyViewBox();
+      playSound('click');
+    }
+  }
+  
+  container.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 0.88 : 1.14;
+    const newWidth = appState.viewBox.width * factor;
+    const newHeight = appState.viewBox.height * factor;
+    
+    if (newWidth >= 500 && newWidth <= 6500) {
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      
+      const mouseSvgX = appState.viewBox.x + (mouseX / container.clientWidth) * appState.viewBox.width;
+      const mouseSvgY = appState.viewBox.y + (mouseY / container.clientHeight) * appState.viewBox.height;
+      
+      appState.viewBox.x = mouseSvgX - (mouseX / container.clientWidth) * newWidth;
+      appState.viewBox.y = mouseSvgY - (mouseY / container.clientHeight) * newHeight;
+      appState.viewBox.width = newWidth;
+      appState.viewBox.height = newHeight;
+      
+      applyViewBox();
+    }
+  }, { passive: false });
+  
+  container.addEventListener('mousedown', (e) => {
+    if (appState.isDraggingPegman || e.target.closest('.modal-overlay') || e.target.closest('.action-btn')) return;
+    if (e.button === 0) {
+      appState.isPanning = true;
+      appState.startPan = { x: e.clientX, y: e.clientY };
+    }
+  });
+  
+  window.addEventListener('mousemove', (e) => {
+    if (!appState.isPanning) return;
+    const dx = (e.clientX - appState.startPan.x) * (appState.viewBox.width / container.clientWidth);
+    const dy = (e.clientY - appState.startPan.y) * (appState.viewBox.height / container.clientHeight);
+    appState.viewBox.x -= dx;
+    appState.viewBox.y -= dy;
+    appState.startPan = { x: e.clientX, y: e.clientY };
+    applyViewBox();
+  });
+  
+  window.addEventListener('mouseup', () => {
+    appState.isPanning = false;
+  });
+}
+
+// ------------------------------------------------------------------------------
+// 11. MODALES
+// ------------------------------------------------------------------------------
+function initModals() {
+  document.querySelectorAll('[data-close]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-close');
+      closeModal(targetId);
+      playSound('click');
+    });
+  });
+  
+  const btnPitch = document.getElementById('btn-open-pitch');
+  if (btnPitch) {
+    btnPitch.addEventListener('click', () => {
+      playSound('coin');
+      openModal('modal-pitch');
+    });
+  }
+}
+
+function openModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.add('active');
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) modal.classList.remove('active');
+}
+
+// ------------------------------------------------------------------------------
+// 12. RENDERIZADO VISUAL CON SPRITES RICOS DE VIDEOJUEGO
+// ------------------------------------------------------------------------------
+function renderAll() {
+  renderWorkSpans();
+  renderCatenaryLayer();
+  renderEntitiesDOM();
+  updateCounters();
+  renderTable();
+}
+
+function renderWorkSpans() {
+  const layer = document.getElementById('work-span-layer');
+  layer.innerHTML = '';
+  
+  appState.crews.forEach(crew => {
+    const yTrack = crew.via === 'V1' ? 330 : 220;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', crew.xMin);
+    rect.setAttribute('y', yTrack - 14);
+    rect.setAttribute('width', Math.max(20, crew.xMax - crew.xMin));
+    rect.setAttribute('height', 28);
+    rect.setAttribute('rx', '5');
+    rect.setAttribute('fill', crew.inSafeZone ? 'rgba(13, 148, 136, 0.16)' : 'rgba(245, 158, 11, 0.18)');
+    rect.setAttribute('stroke', crew.inSafeZone ? '#14b8a6' : '#f59e0b');
+    rect.setAttribute('stroke-width', '2');
+    rect.setAttribute('stroke-dasharray', crew.inSafeZone ? '4 4' : '8 4');
+    layer.appendChild(rect);
+  });
+  
+  appState.vehicles.forEach(veh => {
+    const yTrack = veh.via === 'V1' ? 330 : 220;
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', veh.xMin);
+    rect.setAttribute('y', yTrack - 14);
+    rect.setAttribute('width', Math.max(20, veh.xMax - veh.xMin));
+    rect.setAttribute('height', 28);
+    rect.setAttribute('rx', '5');
+    rect.setAttribute('fill', 'rgba(56, 189, 248, 0.18)');
+    rect.setAttribute('stroke', '#38bdf8');
+    rect.setAttribute('stroke-width', '2');
+    layer.appendChild(rect);
+  });
+}
+
+function renderEntitiesDOM() {
+  const layer = document.getElementById("dynamic-entities-layer");
+  const badgesLayer = document.getElementById("multicrew-badges-layer");
+  layer.innerHTML = "";
+  badgesLayer.innerHTML = "";
+  
+  const zoneGroups = {};
+  appState.crews.forEach(crew => {
+    const firstZone = crew.zones[0] || "Z0";
+    const key = `${firstZone}_${crew.via}`;
+    if (!zoneGroups[key]) zoneGroups[key] = [];
+    zoneGroups[key].push(crew);
+  });
+  
+  // DIBUJAR CUADRILLAS A PIE CON SPRITE ARCADE DE VIDEOJUEGO
+  appState.crews.forEach((crew) => {
+    const yPos = crew.inSafeZone ? (crew.via === "V1" ? 370 : 172) : (crew.via === "V1" ? 330 : 220);
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "crew-token");
+    g.setAttribute("id", `token-${crew.id}`);
+    g.setAttribute("transform", `translate(${crew.x}, ${yPos})`);
+    g.setAttribute("data-id", crew.id);
+    
+    g.innerHTML = `
+      <!-- Halo de estado -->
+      <circle cx="0" cy="0" r="18" fill="${crew.inSafeZone ? "rgba(16, 185, 129, 0.28)" : "rgba(245, 158, 11, 0.24)"}" filter="url(#glow-amber)" style="pointer-events:none;" />
+      
+      <!-- Haz de linterna frontal tactica (LED Headlamp) -->
+      <polygon class="crew-flashlight-beam" points="5,-11 50,-22 50,0" fill="rgba(254, 240, 138, 0.38)" style="pointer-events:none; display:${crew.inSafeZone ? "none" : "block"};" />
+      
+      <!-- Conos de seguridad reflectivos colocados en via durante faena -->
+      <g class="crew-safety-cones" style="display:${crew.isWorking ? "block" : "none"}; pointer-events:none;">
+        <g transform="translate(-22, 6)">
+          <polygon points="-6,7 6,7 2,-9 -2,-9" fill="#f97316" class="safety-cone" />
+          <rect x="-3.5" y="-2" width="7" height="2" fill="#ffffff" />
+          <rect x="-2" y="-6" width="4" height="1.8" fill="#ffffff" />
+          <rect x="-8" y="7" width="16" height="2" rx="0.5" fill="#0f172a" />
+        </g>
+        <g transform="translate(22, 6)">
+          <polygon points="-6,7 6,7 2,-9 -2,-9" fill="#f97316" class="safety-cone" />
+          <rect x="-3.5" y="-2" width="7" height="2" fill="#ffffff" />
+          <rect x="-2" y="-6" width="4" height="1.8" fill="#ffffff" />
+          <rect x="-8" y="7" width="16" height="2" rx="0.5" fill="#0f172a" />
+        </g>
+      </g>
+      
+      <!-- Chispas doradas y estrellas de impacto sobre el riel -->
+      <g class="crew-work-sparks" style="opacity:0; pointer-events:none;" transform="translate(14, 8)">
+        <polygon points="0,-4 1.5,-1 4.5,-1 2,1 3,4 0,2 -3,4 -2,1 -4.5,-1 -1.5,-1" fill="#fef08a" />
+        <polygon points="8,-8 9,-6 11,-6 9.5,-4.5 10,-2.5 8,-3.5 6,-2.5 6.5,-4.5 5,-6 7,-6" fill="#facc15" />
+        <circle cx="5" cy="-2" r="1.8" fill="#ffffff" />
+        <circle cx="-4" cy="-5" r="1.2" fill="#fbbf24" />
+        <circle cx="10" cy="-3" r="1.5" fill="#f59e0b" />
+      </g>
+      
+      <!-- Visual de Cuadrilla (2 operarios con presencia y estilo arcade) -->
+      <g class="crew-visual" style="pointer-events:none;">
+        <!-- Operario Companero de Cuadrilla (Asistente con banderin de aviso) -->
+        <g class="crew-companion-group" transform="translate(-14, -2)">
+          <circle cx="0" cy="-9" r="3.2" fill="#f8fafc" stroke="#cbd5e1" stroke-width="0.7" />
+          <path d="M -4,-11 Q 0,-15 4,-11 Z" fill="#ffffff" />
+          <path d="M -4,-6 L 4,-6 L 3,4 L -3,4 Z" fill="#84cc16" />
+          <line x1="-3" y1="-2" x2="3" y2="-2" stroke="#ffffff" stroke-width="1" />
+          <line x1="-2" y1="4" x2="-2" y2="11" stroke="#0f172a" stroke-width="1.8" />
+          <line x1="2" y1="4" x2="2" y2="11" stroke="#0f172a" stroke-width="1.8" />
+          <line x1="-5" y1="2" x2="-5" y2="-12" stroke="#94a3b8" stroke-width="1.2" />
+          <polygon points="-5,-12 3,-8 -5,-4" fill="#ef4444" class="companion-flag" />
+        </g>
+        
+        <!-- Operario Principal (Lider / Bateador en primer plano) -->
+        <g class="crew-char-body">
+          <!-- Piernas con articulacion y botas de seguridad -->
+          <g id="crew-legs-${crew.id}">
+            <g class="crew-leg-left">
+              <path d="M -4,5 L -5,11 L -2,11 L -2,5 Z" fill="#0f172a" />
+              <rect x="-5.5" y="7" width="3.5" height="2.5" rx="1" fill="#facc15" />
+              <path d="M -6,11 L -1,11 L -1,14 L -7,14 Z" fill="#78350f" />
+            </g>
+            <g class="crew-leg-right">
+              <path d="M 2,5 L 3,11 L 6,11 L 4,5 Z" fill="#0f172a" />
+              <rect x="2.5" y="7" width="3.5" height="2.5" rx="1" fill="#facc15" />
+              <path d="M 2,11 L 7,11 L 8,14 L 1,14 Z" fill="#78350f" />
+            </g>
+          </g>
+          
+          <!-- Torso con Chaleco de Alta Visibilidad L2 -->
+          <path d="M -7,-6 L 7,-6 L 6,5 L -6,5 Z" fill="url(#worker-vest-grad)" stroke="#c2410c" stroke-width="0.8" />
+          <line x1="-5" y1="-5" x2="4" y2="4" stroke="#ffffff" stroke-width="1.4" opacity="0.95" />
+          <line x1="4" y1="-5" x2="-5" y2="4" stroke="#ffffff" stroke-width="1.4" opacity="0.95" />
+          <rect x="-6.5" y="3.5" width="13" height="2.5" fill="#451a03" />
+          <rect x="-1.5" y="3.5" width="3" height="2.5" fill="#facc15" />
+          <path d="M 4,6 L 7,10 L 5.5,10.5 L 3.5,7 Z" fill="#94a3b8" />
+          
+          <!-- Radio TETRA en hombro con LED verde -->
+          <rect x="-7.5" y="-7" width="3" height="5" rx="0.8" fill="#0f172a" />
+          <line x1="-6" y1="-7" x2="-6" y2="-12" stroke="#0f172a" stroke-width="0.8" />
+          <circle cx="-6" cy="-5" r="0.9" class="crew-walkie-led" />
+          
+          <!-- Cabeza, Rostro con gafas polarizadas y Casco 3D -->
+          <rect x="-2" y="-9" width="4" height="4" fill="#fde68a" />
+          <circle cx="0.5" cy="-9" r="4.2" fill="#fde68a" />
+          <rect x="-1" y="-10" width="5.5" height="2.8" rx="1" fill="#0f172a" />
+          <line x1="0" y1="-9" x2="3.5" y2="-9" stroke="#38bdf8" stroke-width="1" />
+          <path d="M -5.5,-11 Q 0.5,-17 6.5,-11 Z" fill="url(#worker-helmet-grad)" stroke="#ca8a04" stroke-width="0.8" />
+          <rect x="-6" y="-12" width="13.5" height="2" rx="1" fill="#facc15" stroke="#ca8a04" stroke-width="0.5" />
+          <rect x="3.5" y="-13" width="2.5" height="2.5" rx="0.5" fill="#0f172a" />
+          <circle cx="5.5" cy="-11.8" r="1.4" fill="#ffffff" filter="drop-shadow(0 0 4px #ffffff)" />
+          
+          <!-- Herramienta Bateadora / Llave en faena -->
+          <g class="crew-tamper-tool" style="display:${crew.isWorking ? "block" : "none"};">
+            <line x1="2" y1="-1" x2="13" y2="8" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+            <rect x="6" y="2" width="5" height="4" rx="1" fill="#f59e0b" stroke="#0f172a" stroke-width="0.8" />
+            <rect x="11" y="7" width="4" height="4" rx="0.5" fill="#cbd5e1" stroke="#334155" stroke-width="0.8" />
+            <line x1="13" y1="10" x2="14" y2="13" stroke="#94a3b8" stroke-width="1.8" stroke-linecap="round" />
+          </g>
+          
+          <!-- Vara / linterna al patrullar -->
+          <g class="crew-patrol-tool" style="display:${crew.isWorking || crew.inSafeZone ? "none" : "block"};">
+            <line x1="4" y1="2" x2="10" y2="7" stroke="#cbd5e1" stroke-width="1.6" stroke-linecap="round" />
+          </g>
+          
+          <!-- Brazo con pulgar arriba en anden seguro -->
+          <g class="crew-safe-thumbsup" style="display:${crew.inSafeZone ? "block" : "none"};">
+            <line x1="3" y1="-3" x2="8" y2="-9" stroke="#fde68a" stroke-width="2" stroke-linecap="round" />
+            <circle cx="8" cy="-9" r="1.8" fill="#fde68a" />
+          </g>
+        </g>
+      </g>
+      
+      <!-- Cartela con Datos y Estado -->
+      <rect x="-70" y="-36" width="140" height="17" rx="3.5" fill="#0a121e" stroke="${crew.inSafeZone ? "#10b981" : "#f59e0b"}" stroke-width="1.3" style="pointer-events:none;" />
+      <text class="crew-status-label" x="0" y="-24" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle" style="pointer-events:none;">
+        ${crew.inSafeZone ? "🛡️ " + crew.responsible.slice(0, 11) + " [Andén]" : "👷 " + crew.responsible.slice(0, 11) + " (" + crew.count + "p)"}
+      </text>
+    `;
+    
+        let crewStartX = 0, crewStartY = 0, crewMoved = false;
+    g.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      crewStartX = e.clientX;
+      crewStartY = e.clientY;
+      crewMoved = false;
+      
+      function onMove(evt) {
+        if (Math.hypot(evt.clientX - crewStartX, evt.clientY - crewStartY) > 6 && !crewMoved) {
+          crewMoved = true;
+          window.removeEventListener("mousemove", onMove);
+          window.removeEventListener("mouseup", onUp);
+          
+          appState.reassigningEntity = crew;
+          appState.isDraggingPegman = true;
+          appState.draggedType = 'crew';
+          appState.hoveredVia = crew.via;
+          appState.draggedZonesSet.clear();
+          crew.zones.forEach(zid => appState.draggedZonesSet.add(zid));
+          appState.hasPaintedMultiZones = crew.zones.length > 1;
+          
+          const ghost = document.getElementById("pegman-drag-ghost");
+          const ghostEmoji = document.getElementById("ghost-emoji");
+          const ghostViaBadge = document.getElementById("ghost-via-badge");
+          if (ghost && ghostEmoji && ghostViaBadge) {
+            ghostEmoji.textContent = '👷';
+            ghostViaBadge.textContent = crew.via === 'V1' ? 'VÍA 1 ► (HACIA ATE)' : 'VÍA 2 ◄ (HACIA CALLAO)';
+            ghostViaBadge.className = 'ghost-via-badge via-' + crew.via.toLowerCase();
+            ghost.style.display = 'flex';
+            ghost.style.left = evt.clientX + 'px';
+            ghost.style.top = evt.clientY + 'px';
+          }
+          renderDragSelectionSpan(crew.via);
+          playSound("jump");
+          showToast('📍 Moviendo ' + crew.responsible + ': Arrastra por la vía (clic derecho para más tramos) y suelta.', 'info');
+        }
+      }
+      function onUp() {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      }
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    });
+
+    g.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (crewMoved) return;
+      playSound("coin");
+      openQuickEditForToken(crew, e.clientX, e.clientY);
+    });
+    
+    layer.appendChild(g);
+  });
+  
+  // BADGES DE COEXISTENCIA MULTI-CUADRILLA
+  Object.keys(zoneGroups).forEach(key => {
+    const group = zoneGroups[key];
+    if (group.length >= 2) {
+      const firstCrew = group[0];
+      // FIX JITTER: Usar coordenada estática fija del cantón para evitar parpadeo y temblor al pasar el mouse
+      const firstZone = ZONAS_VIA.find(z => z.id === firstCrew.zones[0]) || { xStart: 100, xEnd: 200 };
+      const centerX = firstZone.xStart + (firstZone.xEnd - firstZone.xStart) / 2;
+      const yPos = firstCrew.via === "V1" ? 376 : 174;
+      
+      const gBadge = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      gBadge.setAttribute("class", "multicrew-badge");
+      gBadge.setAttribute("transform", `translate(${centerX}, ${yPos})`);
+      gBadge.setAttribute("title", "Múltiples cuadrillas a pie coexistiendo. Toca para ver detalle.");
+      
+      gBadge.innerHTML = `
+        <rect x="-65" y="-10" width="130" height="20" rx="10" fill="#0284c7" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="0" y="4" fill="#ffffff" font-size="9" font-weight="900" font-family="sans-serif" text-anchor="middle">
+          👥 ${group.length} CUADRILLAS A PIE
+        </text>
+      `;
+      
+      gBadge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        playSound("coin");
+        showMultiCrewPopover(group, e.clientX, e.clientY);
+      });
+      
+      badgesLayer.appendChild(gBadge);
+    }
+  });
+  
+  // DIBUJAR VEHÍCULOS AUXILIARES: DRESINA BIVIAL PESADA (NO ES UN TREN)
+  appState.vehicles.forEach(veh => {
+    const yPos = veh.via === "V1" ? 330 : 220;
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "vehicle-token");
+    g.setAttribute("id", `token-${veh.id}`);
+    g.setAttribute("transform", `translate(${veh.x}, ${yPos})`);
+    g.setAttribute("data-id", veh.id);
+    
+    g.innerHTML = `
+      <!-- Halo de via -->
+      <rect x="-56" y="-22" width="112" height="42" rx="6" fill="rgba(56, 189, 248, 0.16)" filter="url(#glow-cyan)" style="pointer-events:none;" />
+      
+      <!-- Haz luminoso direccional hacia adelante -->
+      <polygon class="headlight-beam" points="48,-2 135,-22 135,16" fill="url(#headlight-beam-east)" style="pointer-events:none;" />
+      
+      <!-- Carroceria Pesada Bivial de Mantenimiento (NO ES UN TREN) -->
+      <g class="veh-visual veh-chug-vibe" style="pointer-events:none;">
+        
+        <!-- CHASIS INFERIOR Y VIGAS DE ACERO -->
+        <rect x="-50" y="2" width="100" height="10" rx="2" fill="#0f172a" stroke="#334155" stroke-width="1.2" />
+        <rect x="-48" y="4" width="96" height="5" fill="url(#hazard-stripes)" rx="1" />
+        <rect x="-10" y="8" width="20" height="5" rx="2.5" fill="url(#metal-chrome)" stroke="#334155" stroke-width="0.7" />
+        <rect x="-24" y="8" width="12" height="4" fill="#1e293b" />
+        
+        <!-- Neumaticos de goma de carretera (Bivial) replegados -->
+        <rect x="-35" y="2" width="8" height="9" rx="2" fill="#020617" stroke="#1e293b" stroke-width="0.8" />
+        <rect x="25" y="2" width="8" height="9" rx="2" fill="#020617" stroke="#1e293b" stroke-width="0.8" />
+        
+        <!-- Topes ferroviarios de impacto (Buffers) y Gancho de traccion -->
+        <rect x="49" y="1" width="4" height="9" rx="1.5" fill="#ef4444" stroke="#991b1b" stroke-width="0.8" />
+        <rect x="52" y="4" width="3" height="3" fill="#cbd5e1" />
+        <rect x="-53" y="1" width="4" height="9" rx="1.5" fill="#ef4444" stroke="#991b1b" stroke-width="0.8" />
+        <rect x="-55" y="4" width="3" height="3" fill="#cbd5e1" />
+        
+        <!-- Bogies y Ruedas de acero con 4 rayos giratorios -->
+        <g transform="translate(30, 13)">
+          <circle cx="0" cy="0" r="5.5" fill="#1e293b" stroke="url(#metal-chrome)" stroke-width="1.5" />
+          <circle cx="0" cy="0" r="2" fill="#cbd5e1" />
+          <g class="veh-wheel-spoke">
+            <line x1="-4.5" y1="0" x2="4.5" y2="0" stroke="#facc15" stroke-width="1.2" />
+            <line x1="0" y1="-4.5" x2="0" y2="4.5" stroke="#facc15" stroke-width="1.2" />
+          </g>
+        </g>
+        <g transform="translate(-30, 13)">
+          <circle cx="0" cy="0" r="5.5" fill="#1e293b" stroke="url(#metal-chrome)" stroke-width="1.5" />
+          <circle cx="0" cy="0" r="2" fill="#cbd5e1" />
+          <g class="veh-wheel-spoke">
+            <line x1="-4.5" y1="0" x2="4.5" y2="0" stroke="#facc15" stroke-width="1.2" />
+            <line x1="0" y1="-4.5" x2="0" y2="4.5" stroke="#facc15" stroke-width="1.2" />
+          </g>
+        </g>
+        
+        <!-- PLATAFORMA TRASERA ABIERTA (FLATBED DE TRABAJO - COMPACTA DENTRO DE VÍA) -->
+        <rect x="-48" y="-2" width="52" height="4" fill="#1e293b" stroke="#334155" stroke-width="1" />
+        <line x1="-48" y1="-8" x2="4" y2="-8" stroke="#facc15" stroke-width="1.2" />
+        <line x1="-48" y1="-8" x2="-48" y2="-2" stroke="#facc15" stroke-width="1.2" />
+        <line x1="-28" y1="-8" x2="-28" y2="-2" stroke="#facc15" stroke-width="1.2" />
+        <line x1="-8" y1="-8" x2="-8" y2="-2" stroke="#facc15" stroke-width="1.2" />
+        
+        <!-- Equipamiento Ferroviario Compacto en Plataforma (Catenaria y Vía - Sin elementos que se salgan) -->
+        <!-- Generador auxiliar insonorizado -->
+        <rect x="-44" y="-8.5" width="13" height="6.5" rx="1" fill="#0f172a" stroke="#facc15" stroke-width="0.8" />
+        <line x1="-42" y1="-5.5" x2="-33" y2="-5.5" stroke="#facc15" stroke-width="0.8" />
+        <!-- Carrete / Tambor de hilo de contacto catenaria compacto -->
+        <circle cx="-24" cy="-5.5" r="4.2" fill="#b45309" stroke="#78350f" stroke-width="0.8" />
+        <circle cx="-24" cy="-5.5" r="1.8" fill="#fde68a" />
+        <!-- Extintor de faena -->
+        <rect x="-31" y="-8" width="4" height="6" rx="1.5" fill="#ef4444" />
+        <!-- Cofre de herramientas y repuestos de riel -->
+        <rect x="-15" y="-8.5" width="16" height="6.5" rx="1" fill="#334155" stroke="#475569" stroke-width="0.8" />
+        <rect x="-13" y="-7" width="4" height="3" fill="#facc15" rx="0.5" />
+        <rect x="-7" y="-7" width="6" height="3" fill="#0284c7" rx="0.5" />
+        <circle cx="-49" cy="-1" r="2.2" fill="#ef4444" filter="drop-shadow(0 0 4px #ef4444)" />
+        
+        <!-- CABINA INDUSTRIAL DELANTERA (ESTILO CAMION / DRESINA PESADA) -->
+        <path d="M 4,-14 L 14,-22 L 44,-22 L 48,-14 L 48,2 L 4,2 Z" fill="url(#veh-cab-paint)" stroke="#d97706" stroke-width="1.2" />
+        
+        <!-- Parabrisas angular con visera parasol y cristal polarizado -->
+        <polygon points="26,-20 42,-20 45,-12 26,-12" fill="url(#veh-glass-polar)" stroke="#0369a1" stroke-width="0.8" />
+        <line x1="25" y1="-21" x2="44" y2="-21" stroke="#0f172a" stroke-width="2" />
+        
+        <!-- Ventana lateral con maquinista visible con casco amarillo -->
+        <rect x="10" y="-19" width="13" height="9" rx="1.5" fill="url(#veh-glass-polar)" stroke="#0369a1" stroke-width="0.8" />
+        <circle cx="16" cy="-14" r="2.8" fill="#facc15" />
+        <rect x="14" y="-11" width="5" height="4" rx="1" fill="#ea580c" />
+        <circle cx="21" cy="-12" r="1.5" fill="#334155" />
+        <line x1="24" y1="-21" x2="24" y2="2" stroke="#b45309" stroke-width="0.8" />
+        <rect x="21" y="-8" width="2" height="1" fill="#cbd5e1" />
+        
+        <!-- Rejilla frontal de radiador diesel -->
+        <rect x="42" y="-10" width="5" height="10" rx="1" fill="#0f172a" />
+        <line x1="43" y1="-8" x2="46" y2="-8" stroke="#64748b" stroke-width="0.7" />
+        <line x1="43" y1="-5" x2="46" y2="-5" stroke="#64748b" stroke-width="0.7" />
+        <line x1="43" y1="-2" x2="46" y2="-2" stroke="#64748b" stroke-width="0.7" />
+        
+        <!-- Faros de xenon delanteros y retrovisor -->
+        <circle cx="47" cy="-7" r="3.2" fill="#ffffff" filter="drop-shadow(0 0 6px #38bdf8)" />
+        <circle cx="47" cy="-1" r="2" fill="#facc15" />
+        <line x1="28" y1="-17" x2="31" y2="-17" stroke="#0f172a" stroke-width="1" />
+        <rect x="31" y="-19" width="2" height="5" rx="0.5" fill="#334155" />
+        
+        <!-- TECHO: BALIZAS DUALES Y BOCINAS (COMPACTAS A RAS DE TECHO) -->
+        <rect x="15" y="-24.5" width="5" height="2.5" rx="0.8" fill="#f59e0b" class="beacon-strobe-a" />
+        <rect x="35" y="-24.5" width="5" height="2.5" rx="0.8" fill="#f59e0b" class="beacon-strobe-b" />
+        <rect x="25" y="-25" width="6" height="3" rx="1" fill="#334155" />
+        <circle cx="28" cy="-23.5" r="1.8" fill="#ffffff" filter="drop-shadow(0 0 4px #ffffff)" />
+        <path d="M 8,-23 L 13,-23 L 14,-24.5 L 14,-22" fill="none" stroke="url(#metal-chrome)" stroke-width="1.2" />
+        <!-- Tubo de escape compacto a ras de cabina sin aros de humo invasivos -->
+        <rect x="5" y="-24" width="3" height="7" fill="url(#metal-chrome)" stroke="#334155" stroke-width="0.6" rx="0.5" />
+      </g>
+      
+      <!-- Cartela informativa de vehiculo -->
+      <rect x="-70" y="-36" width="140" height="17" rx="3.5" fill="#0a121e" stroke="#38bdf8" stroke-width="1.3" style="pointer-events:none;" />
+      <text class="veh-status-label" x="0" y="-24" fill="#38bdf8" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle" style="pointer-events:none;">
+        🚜 ${veh.vehicleType.slice(0, 16)}
+      </text>
+    `;
+    
+        let vehStartX = 0, vehStartY = 0, vehMoved = false;
+    g.addEventListener("mousedown", (e) => {
+      if (e.button !== 0) return;
+      vehStartX = e.clientX;
+      vehStartY = e.clientY;
+      vehMoved = false;
+      
+      function onMove(evt) {
+        if (Math.hypot(evt.clientX - vehStartX, evt.clientY - vehStartY) > 6 && !vehMoved) {
+          vehMoved = true;
+          window.removeEventListener("mousemove", onMove);
+          window.removeEventListener("mouseup", onUp);
+          
+          appState.reassigningEntity = veh;
+          appState.isDraggingPegman = true;
+          appState.draggedType = 'vehicle';
+          appState.hoveredVia = veh.via;
+          appState.draggedZonesSet.clear();
+          veh.zones.forEach(zid => appState.draggedZonesSet.add(zid));
+          appState.hasPaintedMultiZones = veh.zones.length > 1;
+          
+          const ghost = document.getElementById("pegman-drag-ghost");
+          const ghostEmoji = document.getElementById("ghost-emoji");
+          const ghostViaBadge = document.getElementById("ghost-via-badge");
+          if (ghost && ghostEmoji && ghostViaBadge) {
+            ghostEmoji.textContent = '🚜';
+            ghostViaBadge.textContent = veh.via === 'V1' ? 'VÍA 1 ► (HACIA ATE)' : 'VÍA 2 ◄ (HACIA CALLAO)';
+            ghostViaBadge.className = 'ghost-via-badge via-' + veh.via.toLowerCase();
+            ghost.style.display = 'flex';
+            ghost.style.left = evt.clientX + 'px';
+            ghost.style.top = evt.clientY + 'px';
+          }
+          renderDragSelectionSpan(veh.via);
+          playSound("jump");
+          showToast('📍 Moviendo ' + veh.vehicleType + ': Arrastra por la vía (clic derecho para más tramos) y suelta.', 'info');
+        }
+      }
+      function onUp() {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      }
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    });
+
+    g.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (vehMoved) return;
+      playSound("coin");
+      openQuickEditForToken(veh, e.clientX, e.clientY);
+    });
+    
+    layer.appendChild(g);
+  });
+}
+
+// ------------------------------------------------------------------------------
+// 13. MOTOR DE ANIMACIÓN Y GESTOS DE VIDEOJUEGO (DESACOPLADO A 60 FPS)
+// ------------------------------------------------------------------------------
+let lastAnimTimestamp = performance.now();
+
+function initAnimationEngine() {
+  function tick(timestamp) {
+    const dt = Math.min((timestamp - lastAnimTimestamp) / 1000, 0.1);
+    lastAnimTimestamp = timestamp;
+    
+    // 1. Actualizar animacion de Cuadrillas a pie
+    appState.crews.forEach(crew => {
+      const minX = (crew.xMin || 100) + 25;
+      const maxX = (crew.xMax || 300) - 25;
+      
+      if (crew.inSafeZone) {
+        crew.isWorking = false;
+        const el = document.getElementById(`token-${crew.id}`);
+        if (el) {
+          const ySafe = crew.via === "V1" ? 370 : 172;
+          el.setAttribute("transform", `translate(${crew.x.toFixed(1)}, ${ySafe.toFixed(1)})`);
+          
+          const label = el.querySelector(".crew-status-label");
+          if (label) {
+            label.textContent = `🛡️ ${crew.responsible} [Andén Seguro]`;
+          }
+          const sparks = el.querySelector(".crew-work-sparks");
+          if (sparks) sparks.style.opacity = "0";
+          const cones = el.querySelector(".crew-safety-cones");
+          if (cones) cones.style.display = "none";
+          const thumbs = el.querySelector(".crew-safe-thumbsup");
+          if (thumbs) thumbs.style.display = "block";
+          const tamper = el.querySelector(".crew-tamper-tool");
+          if (tamper) tamper.style.display = "none";
+          const patrol = el.querySelector(".crew-patrol-tool");
+          if (patrol) patrol.style.display = "none";
+        }
+        return;
+      }
+      
+      if (crew.isWorking) {
+        crew.workTimer -= dt;
+        if (crew.workTimer <= 0) {
+          crew.isWorking = false;
+          crew.workCountdown = 6 + Math.random() * 5;
+        }
+      } else {
+        crew.x += (crew.speed || 15) * (crew.dir || 1) * dt;
+        crew.workCountdown -= dt;
+        
+        if (crew.x >= maxX) {
+          crew.x = maxX;
+          crew.dir = -1;
+          crew.isWorking = true;
+          crew.workTimer = 3.6;
+        } else if (crew.x <= minX) {
+          crew.x = minX;
+          crew.dir = 1;
+          crew.isWorking = true;
+          crew.workTimer = 3.6;
+        } else if (crew.workCountdown <= 0) {
+          crew.isWorking = true;
+          crew.workTimer = 3.2;
+          crew.workCountdown = 7 + Math.random() * 4;
+        }
+      }
+      
+      const el = document.getElementById(`token-${crew.id}`);
+      if (el) {
+        const yBase = crew.via === "V1" ? 330 : 220;
+        const bob = crew.isWorking ? Math.sin(timestamp / 200) * 1.4 : Math.sin(timestamp / 140) * 2.5;
+        el.setAttribute("transform", `translate(${crew.x.toFixed(1)}, ${(yBase + bob).toFixed(1)})`);
+        
+        const visual = el.querySelector(".crew-visual");
+        if (visual) {
+          visual.setAttribute("transform", `scale(${crew.dir || 1}, 1)`);
+        }
+        
+        const beam = el.querySelector(".crew-flashlight-beam");
+        if (beam) {
+          beam.setAttribute("transform", `scale(${crew.dir || 1}, 1)`);
+          beam.style.display = "block";
+        }
+        
+        const sparks = el.querySelector(".crew-work-sparks");
+        if (sparks) {
+          sparks.style.opacity = crew.isWorking ? "0.95" : "0";
+        }
+        
+        const cones = el.querySelector(".crew-safety-cones");
+        if (cones) {
+          cones.style.display = crew.isWorking ? "block" : "none";
+        }
+        
+        const tamper = el.querySelector(".crew-tamper-tool");
+        if (tamper) {
+          tamper.style.display = crew.isWorking ? "block" : "none";
+        }
+        
+        const patrol = el.querySelector(".crew-patrol-tool");
+        if (patrol) {
+          patrol.style.display = crew.isWorking ? "none" : "block";
+        }
+        
+        const thumbs = el.querySelector(".crew-safe-thumbsup");
+        if (thumbs) {
+          thumbs.style.display = "none";
+        }
+        
+        const label = el.querySelector(".crew-status-label");
+        if (label) {
+          label.textContent = crew.isWorking ? `👷 ${crew.responsible} [Trabajando]` : `👷 ${crew.responsible} (${crew.count}p)`;
+        }
+      }
+    });
+    
+    // 2. Actualizar animacion de Vehiculos Auxiliares
+    appState.vehicles.forEach(veh => {
+      const minX = (veh.xMin || 100) + 45;
+      const maxX = (veh.xMax || 300) - 45;
+      
+      veh.x += (veh.speed || 26) * (veh.dir || 1) * dt;
+      
+      if (veh.x >= maxX) {
+        veh.x = maxX;
+        veh.dir = -1;
+      } else if (veh.x <= minX) {
+        veh.x = minX;
+        veh.dir = 1;
+      }
+      
+      const el = document.getElementById(`token-${veh.id}`);
+      if (el) {
+        const yBase = veh.via === "V1" ? 330 : 220;
+        const rumble = Math.sin(timestamp / 35) * 0.7;
+        el.setAttribute("transform", `translate(${veh.x.toFixed(1)}, ${(yBase + rumble).toFixed(1)})`);
+        
+        const visual = el.querySelector(".veh-visual");
+        if (visual) {
+          visual.setAttribute("transform", `scale(${veh.dir || 1}, 1)`);
+        }
+        
+        const beam = el.querySelector(".headlight-beam");
+        if (beam) {
+          if (veh.dir === -1) {
+            beam.setAttribute("points", "-48,-2 -135,-22 -135,16");
+            beam.setAttribute("fill", "url(#headlight-beam-west)");
+          } else {
+            beam.setAttribute("points", "48,-2 135,-22 135,16");
+            beam.setAttribute("fill", "url(#headlight-beam-east)");
+          }
+        }
+      }
+    });
+    
+    requestAnimationFrame(tick);
+  }
+  
+  requestAnimationFrame(tick);
+}
+
+// ------------------------------------------------------------------------------
+// 14. POPOVER DE MÚLTIPLES CUADRILLAS A PIE
+// ------------------------------------------------------------------------------
+function showMultiCrewPopover(crews, clientX, clientY) {
+  const popover = document.getElementById('multicrew-popover');
+  const title = document.getElementById('popover-title');
+  const body = document.getElementById('popover-body');
+  
+  title.textContent = `Coexistencia de Personal (${crews[0].via}): ${crews.length} Cuadrillas`;
+  body.innerHTML = '';
+  
+  crews.forEach((c, idx) => {
+    const item = document.createElement('div');
+    item.className = 'popover-crew-item';
+    item.innerHTML = `
+      <div style="display:flex; justify-content:space-between;">
+        <strong>#${idx + 1} ${c.responsible} (${c.count} pers)</strong>
+        <span style="color:#38bdf8; font-weight:bold;">Radio: ${c.radio}</span>
+      </div>
+      <div>Empresa: ${c.company} | Ingreso: ${c.timeIn}</div>
+      <div style="margin-top:6px; display:flex; gap:6px;">
+        <button class="btn-table-action" onclick="focusEntityOnMap('${c.id}')">Centrar</button>
+        <button class="btn-table-action btn-safe-zone" onclick="toggleSafeZone('${c.id}')">${c.inSafeZone ? 'A Vía' : 'Andén'}</button>
+        <button class="btn-table-action" onclick="concludeWorkJob('${c.id}')">Concluir</button>
+        <button class="btn-table-action danger" onclick="removeCrew('${c.id}')">Despejar</button>
+      </div>
+    `;
+    body.appendChild(item);
+  });
+  
+  popover.style.left = `${Math.min(clientX, window.innerWidth - 320)}px`;
+  popover.style.top = `${Math.min(clientY, window.innerHeight - 250)}px`;
+  popover.style.display = 'block';
+  
+  document.getElementById('popover-close').onclick = () => {
+    popover.style.display = 'none';
+  };
+}
+
+// ------------------------------------------------------------------------------
+// 15. BITÁCORA ACTIVA CON BÚSQUEDA Y PESTAÑA DE TERMINADOS
+// ------------------------------------------------------------------------------
+function initDockTabsAndSearch() {
+  document.querySelectorAll('.dock-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.dock-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      appState.activeTab = tab.getAttribute('data-tab');
+      playSound('click');
+      renderTable();
+    });
+  });
+  
+  const searchInput = document.getElementById('dock-search-input');
+  searchInput.addEventListener('input', (e) => {
+    appState.searchQuery = e.target.value.toLowerCase().trim();
+    renderTable();
+  });
+}
+
+function renderTable() {
+  const tbody = document.getElementById('work-table-body');
+  tbody.innerHTML = '';
+  
+  let rows = [];
+  
+  if (appState.activeTab === 'completed') {
+    rows = appState.completedJobs.map(j => ({ ...j, isCompleted: true }));
+  } else {
+    if (appState.activeTab === 'all' || appState.activeTab === 'crews') {
+      appState.crews.forEach(c => rows.push({ ...c, category: 'crew', isCompleted: false }));
+    }
+    if (appState.activeTab === 'all' || appState.activeTab === 'vehicles') {
+      appState.vehicles.forEach(v => rows.push({ ...v, category: 'vehicle', isCompleted: false }));
+    }
+  }
+  
+  if (appState.searchQuery) {
+    const q = appState.searchQuery;
+    rows = rows.filter(item => {
+      const resp = (item.responsible || item.vehicleType || '').toLowerCase();
+      const comp = (item.company || item.driver || '').toLowerCase();
+      const rad = (item.radio || '').toLowerCase();
+      const via = (item.via || '').toLowerCase();
+      const zone = (item.zoneLabel || '').toLowerCase();
+      return resp.includes(q) || comp.includes(q) || rad.includes(q) || via.includes(q) || zone.includes(q);
+    });
+  }
+  
+  if (rows.length === 0) {
+    const msg = appState.activeTab === 'completed'
+      ? '— No hay trabajos concluidos archivados en esta guardia —'
+      : '— Vía Principal despejada o no hay registros que coincidan con la búsqueda —';
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:18px; color:#64748b;">${msg}</td></tr>`;
+    return;
+  }
+  
+  rows.forEach(item => {
+    const tr = document.createElement('tr');
+    const isCrew = item.type === 'crew' || item.category === 'crew';
+    const isCompleted = item.isCompleted;
+    
+    tr.innerHTML = `
+      <td>
+        <span class="tag-badge ${isCompleted ? 'tag-completed' : (isCrew ? (item.inSafeZone ? 'tag-safezone' : 'tag-crew') : 'tag-vehicle')}">
+          ${isCompleted ? '✔ Concluido' : (isCrew ? (item.inSafeZone ? '🛡️ En Andén' : '👷 Cuadrilla') : '🚜 Vehículo')}
+        </span>
+      </td>
+      <td><strong>${isCrew ? item.responsible : item.vehicleType}</strong></td>
+      <td>${item.company || (isCrew ? 'Mantenimiento Vía' : 'Vía y Catenaria')}</td>
+      <td>
+        <span class="tag-badge ${item.via === 'V1' ? 'tag-via-1' : 'tag-via-2'}">
+          ${item.via}
+        </span>
+      </td>
+      <td><strong>${item.zoneLabel || 'Tramo asignado'}</strong></td>
+      <td><strong style="color:#38bdf8;">${item.radio}</strong></td>
+      <td>${isCrew ? `${item.count} pers.` : (item.leader || '—')}</td>
+      <td>
+        ${isCompleted 
+          ? '<span style="color:#10b981; font-weight:bold;">✔ Concluido</span>' 
+          : (isCrew && item.inSafeZone 
+              ? '<span style="color:#2dd4bf; font-weight:bold;">🛡️ Andén Seguro</span>' 
+              : '<span style="color:#38bdf8; font-weight:bold;">● En Vía</span>')}
+      </td>
+      <td>${item.timeIn || '—'}</td>
+      <td><strong style="color:${isCompleted ? '#a7f3d0' : '#94a3b8'};">${item.timeOut || (isCompleted ? '—' : 'Pendiente')}</strong></td>
+      <td>
+        ${!isCompleted ? `
+          <button class="btn-table-action" onclick="focusEntityOnMap('${item.id}')" title="Centrar en el mapa">Ver</button>
+          <button class="btn-table-action" onclick="editEntityFromTable('${item.id}', event)" title="Editar datos completos">Editar</button>
+          ${isCrew ? `<button class="btn-table-action btn-safe-zone ${item.inSafeZone ? 'active-safe' : ''}" onclick="toggleSafeZone('${item.id}', event)" title="Mover a Andén / Zona Segura">${item.inSafeZone ? '🚶 A Vía' : '🛡️ Andén'}</button>` : ''}
+          <button class="btn-table-action btn-finish-action" onclick="concludeWorkJob('${item.id}')" title="Concluir trabajo">✔ Concluir</button>
+          <button class="btn-table-action danger" onclick="${isCrew ? `removeCrew('${item.id}')` : `removeVehicle('${item.id}')`}" title="Despejar">Despejar</button>
+        ` : `
+          <button class="btn-table-action" onclick="reopenCompletedJob('${item.id}')" title="Reabrir a Vía Principal">Reabrir</button>
+          <button class="btn-table-action danger" onclick="deleteCompletedJob('${item.id}')" title="Eliminar del archivo">Borrar</button>
+        `}
+      </td>
+    `;
+    
+    if (!isCompleted) {
+      tr.addEventListener('click', (e) => {
+        if (e.target.tagName.toLowerCase() === 'button') return;
+        focusEntityOnMap(item.id);
+      });
+    }
+    
+    tbody.appendChild(tr);
+  });
+}
+
+window.editEntityFromTable = function(entityId, event) {
+  if (event) event.stopPropagation();
+  const crew = appState.crews.find(c => c.id === entityId);
+  const veh = appState.vehicles.find(v => v.id === entityId);
+  const target = crew || veh;
+  if (target) {
+    focusEntityOnMap(entityId);
+    openQuickEditForToken(target, event ? event.clientX : 400, event ? event.clientY : 200);
+  }
+};
+
+window.reopenCompletedJob = function(jobId) {
+  const idx = appState.completedJobs.findIndex(j => j.id === jobId);
+  if (idx !== -1) {
+    const job = appState.completedJobs.splice(idx, 1)[0];
+    delete job.isCompleted;
+    delete job.status;
+    job.timeOut = '';
+    
+    if (job.type === 'crew') {
+      appState.crews.push(job);
+    } else {
+      appState.vehicles.push(job);
+    }
+    
+    playSound('coin');
+    persistState();
+    renderAll();
+    showToast(`Trabajo ${job.responsible || job.vehicleType} reabierto en ${job.via}.`, 'info');
+  }
+};
+
+window.deleteCompletedJob = function(jobId) {
+  const idx = appState.completedJobs.findIndex(j => j.id === jobId);
+  if (idx !== -1) {
+    appState.completedJobs.splice(idx, 1);
+    playSound('click');
+    persistState();
+    renderAll();
+    showToast('Registro eliminado de la bitácora histórica.', 'info');
+  }
+};
+
+function updateCounters() {
+  const crewCount = appState.crews.length;
+  const vehicleCount = appState.vehicles.length;
+  const completedCount = appState.completedJobs.length;
+  
+  const occupiedZones = new Set();
+  appState.crews.forEach(c => {
+    if (!c.inSafeZone) c.zones.forEach(z => occupiedZones.add(z));
+  });
+  appState.vehicles.forEach(v => v.zones.forEach(z => occupiedZones.add(z)));
+  
+  document.getElementById('counter-crews').textContent = crewCount;
+  document.getElementById('counter-vehicles').textContent = vehicleCount;
+  document.getElementById('counter-zones').textContent = occupiedZones.size;
+  
+  document.getElementById('badge-tab-all').textContent = crewCount + vehicleCount;
+  document.getElementById('badge-tab-crews').textContent = crewCount;
+  document.getElementById('badge-tab-vehicles').textContent = vehicleCount;
+  
+  const compBadge = document.getElementById('badge-tab-completed');
+  if (compBadge) compBadge.textContent = completedCount;
+}
+
+// ------------------------------------------------------------------------------
+// 16. ACCIONES OPERATIVAS: CENTRAR Y DESPEJAR
+// ------------------------------------------------------------------------------
+window.focusEntityOnMap = function(entityId) {
+  let targetX = null;
+  const crew = appState.crews.find(c => c.id === entityId);
+  const veh = appState.vehicles.find(v => v.id === entityId);
+  
+  if (crew) targetX = crew.x;
+  else if (veh) targetX = veh.x;
+  
+  if (targetX !== null) {
+    smoothGlideToX(targetX);
+    playSound('coin');
+    showToast(`Centrado en elemento ${entityId}`, 'info');
+  }
+};
+
+window.removeCrew = function(crewId) {
+  const idx = appState.crews.findIndex(c => c.id === crewId);
+  if (idx !== -1) {
+    const crew = appState.crews[idx];
+    appState.crews.splice(idx, 1);
+    appState.historyLog.push({
+      timestamp: new Date().toISOString(),
+      action: 'SALIDA_CUADRILLA',
+      detail: `Cuadrilla ${crew.responsible} desocupó la vía.`
+    });
+    
+    const popover = document.getElementById('multicrew-popover');
+    if (popover) popover.style.display = 'none';
+    const card = document.getElementById('token-quickcard');
+    if (card) card.style.display = 'none';
+    
+    playSound('jump');
+    persistState();
+    renderAll();
+    showToast(`Cuadrilla de ${crew.responsible} desocupó la vía.`, 'warning');
+  }
+};
+
+window.removeVehicle = function(vehId) {
+  const idx = appState.vehicles.findIndex(v => v.id === vehId);
+  if (idx !== -1) {
+    const veh = appState.vehicles[idx];
+    appState.vehicles.splice(idx, 1);
+    appState.historyLog.push({
+      timestamp: new Date().toISOString(),
+      action: 'SALIDA_VEHICULO',
+      detail: `Vehículo ${veh.vehicleType} concluyó maniobras y salió de vía principal.`
+    });
+    
+    const card = document.getElementById('token-quickcard');
+    if (card) card.style.display = 'none';
+    
+    playSound('jump');
+    persistState();
+    renderAll();
+    showToast(`Vehículo ${veh.vehicleType} concluyó maniobra.`, 'warning');
+  }
+};
+
+// ------------------------------------------------------------------------------
+// 17. PARTE DIARIO OFICIAL DE GUARDIA (IMPRIMIBLE / FIRMAS SPCO Y OPERADOR)
+// ------------------------------------------------------------------------------
+function initDailySheetModal() {
+  const btnOpen = document.getElementById('btn-open-daily-sheet');
+  const btnPrint = document.getElementById('btn-print-daily-sheet');
+  const btnExportHTML = document.getElementById('btn-export-sheet-html');
+  
+  if (btnOpen) {
+    btnOpen.addEventListener('click', () => {
+      playSound('coin');
+      generateDailySheetHTML();
+      openModal('modal-daily-sheet');
+    });
+  }
+  
+  if (btnPrint) {
+    btnPrint.addEventListener('click', () => {
+      playSound('coin');
+      window.print();
+    });
+  }
+  
+  if (btnExportHTML) {
+    btnExportHTML.addEventListener('click', () => {
+      playSound('coin');
+      exportDailySheetStandalone();
+    });
+  }
+}
+
+function generateDailySheetHTML() {
+  const container = document.getElementById('printable-daily-sheet');
+  if (!container) return;
+  
+  const now = new Date();
+  const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  const formattedDate = now.toLocaleDateString('es-PE', dateOptions);
+  const formattedTime = now.toLocaleTimeString('es-PE', { hour12: false, hour: '2-digit', minute: '2-digit' });
+  
+  const currentHour = now.getHours();
+  let shiftName = 'TURNO 1 (MAÑANA: 06:00 - 14:00)';
+  if (currentHour >= 14 && currentHour < 22) {
+    shiftName = 'TURNO 2 (TARDE: 14:00 - 22:00)';
+  } else if (currentHour >= 22 || currentHour < 6) {
+    shiftName = 'TURNO 3 (NOCHE: 22:00 - 06:00 - MANTENIMIENTO)';
+  }
+  
+  let totalPersonal = 0;
+  appState.crews.forEach(c => totalPersonal += (c.count || 4));
+  
+  let html = `
+    <!-- Cabecera Oficial Metro de Lima Línea 2 -->
+    <div class="official-sheet-header">
+      <div class="official-logo-box">
+        <div class="official-logo-badge">L2</div>
+        <div class="official-title-box">
+          <h2>METRO DE LIMA Y CALLAO — LÍNEA 2</h2>
+          <p>PUESTO DE CONTROL CENTRAL (PCO) / OCIR ATS — CONTROL DE TRABAJOS EN VÍA</p>
+        </div>
+      </div>
+      <div class="official-meta-box">
+        <strong>PARTE DIARIO OFICIAL</strong><br>
+        <span>REF: ATS-VP-ETAPA-1A</span>
+      </div>
+    </div>
+
+    <!-- Metadatos de la Guardia -->
+    <div class="official-meta-grid">
+      <div class="official-meta-item">
+        <label>Fecha de Guardia:</label>
+        <strong style="text-transform: capitalize;">${formattedDate}</strong>
+      </div>
+      <div class="official-meta-item">
+        <label>Turno Operativo:</label>
+        <strong>${shiftName}</strong>
+      </div>
+      <div class="official-meta-item">
+        <label>Hora de Corte / Emisión:</label>
+        <strong>${formattedTime} hrs</strong>
+      </div>
+      <div class="official-meta-item">
+        <label>Sector Cobertura:</label>
+        <strong>E20 Evitamiento ➔ E24 M. Sta Anita + PTSA</strong>
+      </div>
+    </div>
+
+    <!-- Resumen Cuantitativo -->
+    <div style="display:flex; justify-content:space-between; background:#e2e8f0; padding:8px 14px; border-radius:4px; margin-bottom:14px; font-size:11px; font-weight:bold;">
+      <span>Cuadrillas en Vía: ${appState.crews.length}</span>
+      <span>Vehículos Auxiliares: ${appState.vehicles.length}</span>
+      <span>Total Personal Desplegado: ${totalPersonal} operarios</span>
+      <span>Trabajos Concluidos: ${appState.completedJobs.length}</span>
+    </div>
+
+    <!-- SECCIÓN 1: TRABAJOS ACTIVOS EN VÍA AL CORTE -->
+    <div class="sheet-section-title">1. TRABAJOS Y MANIOBRAS ACTIVAS EN VÍA PRINCIPAL (CORTE DE RELEVO)</div>
+    <table class="sheet-table">
+      <thead>
+        <tr>
+          <th style="width:75px;">Categoría</th>
+          <th>ID / Responsable</th>
+          <th>Empresa / Disciplina</th>
+          <th style="width:40px;">Vía</th>
+          <th>Tramos Cubiertos</th>
+          <th>Radio TETRA</th>
+          <th style="width:50px;">Personal</th>
+          <th style="width:65px;">Hora Ingreso</th>
+          <th>Observaciones de Tarea</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  
+  if (appState.crews.length === 0 && appState.vehicles.length === 0) {
+    html += `<tr><td colspan="9" style="text-align:center; padding:12px; color:#64748b;">(Sin trabajos activos en vía principal al momento del corte de guardia)</td></tr>`;
+  } else {
+    appState.crews.forEach(c => {
+      html += `
+        <tr>
+          <td><span class="sheet-badge sheet-badge-crew">${c.inSafeZone ? '🛡️ En Andén' : '👷 Cuadrilla'}</span></td>
+          <td><strong>${c.responsible}</strong></td>
+          <td>${c.company}</td>
+          <td><span class="sheet-badge ${c.via === 'V1' ? 'sheet-badge-v1' : 'sheet-badge-v2'}">${c.via}</span></td>
+          <td>${c.zoneLabel}</td>
+          <td><strong>${c.radio}</strong></td>
+          <td>${c.count} pers.</td>
+          <td>${c.timeIn}</td>
+          <td>${c.inSafeZone ? 'En zona segura de andén (vía despejada)' : (c.notes || 'Mantenimiento de infraestructura')}</td>
+        </tr>
+      `;
+    });
+    
+    appState.vehicles.forEach(v => {
+      html += `
+        <tr>
+          <td><span class="sheet-badge sheet-badge-veh">🚜 Vehículo</span></td>
+          <td><strong>${v.vehicleType}</strong></td>
+          <td>${v.company}</td>
+          <td><span class="sheet-badge ${v.via === 'V1' ? 'sheet-badge-v1' : 'sheet-badge-v2'}">${v.via}</span></td>
+          <td>${v.zoneLabel}</td>
+          <td><strong>${v.radio}</strong></td>
+          <td>${v.driver || 'Operador'}</td>
+          <td>${v.timeIn}</td>
+          <td>${v.notes || 'Maniobra auxiliar en vía'}</td>
+        </tr>
+      `;
+    });
+  }
+  
+  html += `
+      </tbody>
+    </table>
+
+    <!-- SECCIÓN 2: TRABAJOS CONCLUIDOS DURANTE LA GUARDIA -->
+    <div class="sheet-section-title">2. REGISTRO DE TRABAJOS CONCLUIDOS Y DESPEJES (HISTORIAL DEL TURNO)</div>
+    <table class="sheet-table">
+      <thead>
+        <tr>
+          <th style="width:75px;">Categoría</th>
+          <th>Responsable / Unidad</th>
+          <th>Empresa</th>
+          <th style="width:40px;">Vía</th>
+          <th>Tramos Autorizados</th>
+          <th style="width:65px;">Hora Ingreso</th>
+          <th style="width:65px;">Hora Salida</th>
+          <th>Estado Despeje</th>
+          <th>Informe / Observaciones</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  
+  if (appState.completedJobs.length === 0) {
+    html += `<tr><td colspan="9" style="text-align:center; padding:12px; color:#64748b;">(Sin trabajos terminados registrados durante este turno)</td></tr>`;
+  } else {
+    appState.completedJobs.forEach(j => {
+      const isCrew = j.type === 'crew' || j.category === 'crew';
+      html += `
+        <tr>
+          <td><span class="sheet-badge ${isCrew ? 'sheet-badge-crew' : 'sheet-badge-veh'}">${isCrew ? '👷 Cuadrilla' : '🚜 Vehículo'}</span></td>
+          <td><strong>${isCrew ? j.responsible : j.vehicleType}</strong></td>
+          <td>${j.company}</td>
+          <td><span class="sheet-badge ${j.via === 'V1' ? 'sheet-badge-v1' : 'sheet-badge-v2'}">${j.via}</span></td>
+          <td>${j.zoneLabel}</td>
+          <td>${j.timeIn || '—'}</td>
+          <td><strong>${j.timeOut || '—'}</strong></td>
+          <td><span style="color:#15803d; font-weight:bold;">✔ Vía Despejada</span></td>
+          <td>${j.notes || 'Conforme sin novedades'}</td>
+        </tr>
+      `;
+    });
+  }
+  
+  html += `
+      </tbody>
+    </table>
+
+    <!-- SECCIÓN 3: CASILLEROS DE FIRMA MANUSCRITA Y CONFORMIDAD OPERATIVA -->
+    <div class="sheet-signatures-box">
+      <!-- Cuadro Firma Operador -->
+      <div class="signature-card">
+        <h4>CONFORMIDAD DEL OPERADOR ATS / OCIR (TURNO SALIENTE)</h4>
+        
+        <div class="sig-field-line">
+          <span>Nombre y Apellidos (a mano):</span>
+          <div class="handwrite-line"></div>
+        </div>
+
+        <div class="sig-field-line">
+          <span>Código Operador / DNI:</span>
+          <div class="handwrite-line"></div>
+        </div>
+
+        <div class="sig-field-line" style="margin-top:20px;">
+          <span>Firma:</span>
+          <div class="handwrite-line"></div>
+        </div>
+      </div>
+
+      <!-- Cuadro Firma Supervisor SPCO -->
+      <div class="signature-card">
+        <h4>VISTO BUENO SUPERVISOR PCO (SPCO LÍNEA 2)</h4>
+        
+        <div class="sig-field-line">
+          <span>Nombre y Apellidos (a mano):</span>
+          <div class="handwrite-line"></div>
+        </div>
+
+        <div class="sig-field-line">
+          <span>Matrícula SPCO:</span>
+          <div class="handwrite-line"></div>
+        </div>
+
+        <div class="sig-field-line" style="margin-top:20px;">
+          <span>Firma y Sello Oficial:</span>
+          <div class="handwrite-line"></div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  container.innerHTML = html;
+}
+
+function exportDailySheetStandalone() {
+  const container = document.getElementById('printable-daily-sheet');
+  if (!container) return;
+  
+  const fullHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Parte Diario Oficial ATS - Metro de Lima Línea 2</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #fff; color: #000; padding: 25px; margin: 0; }
+    .official-sheet-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2.5px solid #0284c7; padding-bottom: 12px; margin-bottom: 14px; }
+    .official-logo-box { display: flex; align-items: center; gap: 10px; }
+    .official-logo-badge { background: #0284c7; color: #fff; font-size: 16px; font-weight: 900; padding: 6px 12px; border-radius: 6px; }
+    .official-title-box h2 { font-size: 15px; font-weight: 900; margin: 0; }
+    .official-title-box p { font-size: 10.5px; color: #555; margin: 2px 0 0 0; }
+    .official-meta-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f1f5f9; padding: 10px 14px; border: 1px solid #cbd5e1; margin-bottom: 16px; font-size: 11px; }
+    .official-meta-item label { display: block; font-size: 9px; text-transform: uppercase; font-weight: 800; color: #64748b; }
+    .sheet-section-title { font-size: 12px; font-weight: 800; text-transform: uppercase; color: #0369a1; border-left: 3.5px solid #0284c7; padding-left: 8px; margin: 14px 0 8px 0; }
+    .sheet-table { width: 100%; border-collapse: collapse; font-size: 10px; margin-bottom: 14px; }
+    .sheet-table th { background: #0f172a; color: #fff; padding: 6px 8px; border: 1px solid #334155; text-align: left; }
+    .sheet-table td { padding: 6px 8px; border: 1px solid #cbd5e1; vertical-align: middle; }
+    .sheet-table tr:nth-child(even) td { background: #f8fafc; }
+    .sheet-badge { display: inline-block; padding: 2px 6px; border-radius: 3px; font-weight: 800; font-size: 9px; }
+    .sheet-badge-v1 { background: #dcfce7; color: #15803d; }
+    .sheet-badge-v2 { background: #dbeafe; color: #1d4ed8; }
+    .sheet-badge-crew { background: #fef3c7; color: #b45309; }
+    .sheet-badge-veh { background: #e0f2fe; color: #0369a1; }
+    .sheet-signatures-box { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; padding-top: 14px; border-top: 1.5px solid #cbd5e1; }
+    .signature-card { border: 1.5px dashed #94a3b8; border-radius: 6px; padding: 12px 16px; background: #fafafa; }
+    .signature-card h4 { font-size: 11px; font-weight: 800; text-align: center; margin-bottom: 18px; }
+    .sig-field-line { display: flex; align-items: flex-end; gap: 8px; margin-bottom: 12px; font-size: 10.5px; }
+    .sig-field-line .handwrite-line { flex: 1; border-bottom: 1px solid #000; height: 14px; }
+    @media print { body { padding: 0; } }
+  </style>
+</head>
+<body>
+  ${container.innerHTML}
+</body>
+</html>`;
+
+  const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const dlAnchor = document.createElement('a');
+  dlAnchor.href = url;
+  dlAnchor.download = `PARTE_DIARIO_L2_ATS_${new Date().toISOString().slice(0, 10)}.html`;
+  dlAnchor.click();
+  showToast('Parte Diario descargado en HTML para firma', 'success');
+}
+
+// ------------------------------------------------------------------------------
+// 18. REPORTES OCIR Y RESPALDOS
+// ------------------------------------------------------------------------------
+function initReportAndExport() {
+  const btnReport = document.getElementById('btn-open-report');
+  const btnExport = document.getElementById('btn-export-json');
+  const btnImport = document.getElementById('btn-import-json');
+  const fileInput = document.getElementById('file-import-input');
+  const btnClearAll = document.getElementById('btn-clear-all');
+  
+  if (btnReport) {
+    btnReport.addEventListener('click', () => {
+      playSound('coin');
+      generateShiftReport();
+      openModal('modal-report');
+    });
+  }
+  
+// btnReport condicional arriba
+  
+  document.getElementById('btn-copy-report').addEventListener('click', () => {
+    const text = document.getElementById('report-content-text').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      playSound('coin');
+      showToast('Acta copiada al portapapeles', 'success');
+    });
+  });
+  
+  document.getElementById('btn-print-report').addEventListener('click', () => {
+    playSound('coin');
+    window.print();
+  });
+  
+  if (btnExport) btnExport.addEventListener('click', () => {
+    playSound('coin');
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(appState, null, 2));
+    const dlAnchor = document.createElement('a');
+    dlAnchor.setAttribute('href', dataStr);
+    dlAnchor.setAttribute('download', `ATS_OCIR_VP_RESPALDO_${new Date().toISOString().slice(0, 10)}.json`);
+    dlAnchor.click();
+    showToast('Respaldo descargado exitosamente', 'success');
+  });
+  
+  if (btnImport) btnImport.addEventListener('click', () => {
+    playSound('coin');
+    fileInput.click();
+  });
+  
+  if (fileInput) fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target.result);
+        if (imported.crews && imported.vehicles) {
+          appState.crews = imported.crews;
+          appState.vehicles = imported.vehicles;
+          if (Array.isArray(imported.completedJobs)) appState.completedJobs = imported.completedJobs;
+          if (imported.historyLog) appState.historyLog = imported.historyLog;
+          persistState();
+          renderAll();
+          showToast('Datos restaurados correctamente', 'success');
+        } else {
+          alert('El archivo no contiene un formato de respaldo válido de ATS.');
+        }
+      } catch (err) {
+        alert('Error al leer el archivo JSON.');
+      }
+    };
+    reader.readAsText(file);
+  });
+  
+  btnClearAll.addEventListener('click', () => {
+    if (appState.crews.length === 0 && appState.vehicles.length === 0) {
+      showToast('La vía ya se encuentra despejada.', 'info');
+      return;
+    }
+    const ok = confirm('¿Confirmas el despeje total de la Vía Principal? Todas las cuadrillas y vehículos saldrán del plano.');
+    if (ok) {
+      playSound('hazard');
+      appState.crews = [];
+      appState.vehicles = [];
+      appState.historyLog.push({
+        timestamp: new Date().toISOString(),
+        action: 'DESPEJE_TOTAL',
+        detail: 'El operador OCIR ejecutó el despeje total de la Vía Principal.'
+      });
+      persistState();
+      renderAll();
+      showToast('Vía Principal completamente despejada', 'warning');
+    }
+  });
+}
+
+function generateShiftReport() {
+  const reportBox = document.getElementById('report-content-text');
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = now.toLocaleTimeString('es-PE', { hour12: false });
+  
+  let totalPersonal = 0;
+  appState.crews.forEach(c => totalPersonal += (c.count || 4));
+  
+  let txt = `========================================================================================\n`;
+  txt += `           METRO DE LIMA - LÍNEA 2 | ACTA DE TRABAJOS EN VÍA PRINCIPAL (OCIR ATS)        \n`;
+  txt += `========================================================================================\n`;
+  txt += `FECHA DE GENERACIÓN : ${dateStr} - ${timeStr}\n`;
+  txt += `TRAMO OPERATIVO     : ETAPA 1A (E20 Evitamiento - E24 Mercado Santa Anita)\n`;
+  txt += `TOTAL CUADRILLAS EN VÍA : ${appState.crews.length} (${totalPersonal} operarios en total)\n`;
+  txt += `TOTAL VEHÍCULOS EN VÍA  : ${appState.vehicles.length}\n`;
+  txt += `TOTAL TRABAJOS CONCLUIDOS : ${appState.completedJobs.length}\n`;
+  txt += `----------------------------------------------------------------------------------------\n\n`;
+  
+  txt += `1. DETALLE DE CUADRILLAS A PIE EN VÍA PRINCIPAL:\n`;
+  if (appState.crews.length === 0) {
+    txt += `   (Sin cuadrillas activas al momento del corte)\n\n`;
+  } else {
+    appState.crews.forEach((c, i) => {
+      txt += `   [#${i + 1}] Responsable : ${c.responsible.padEnd(22)} | Cant: ${String(c.count).padStart(2)} pers. | Radio TETRA: ${c.radio}\n`;
+      txt += `        Empresa     : ${c.company}\n`;
+      txt += `        Tramos      : ${c.zoneLabel} (${c.via})\n`;
+      txt += `        Estado      : ${c.inSafeZone ? 'En Andén (Zona Segura)' : 'En vía activa'} | Ingreso: ${c.timeIn} | Obs: ${c.notes || '—'}\n`;
+      txt += `   -------------------------------------------------------------------------------------\n`;
+    });
+    txt += `\n`;
+  }
+  
+  txt += `2. DETALLE DE VEHÍCULOS AUXILIARES EN MANIOBRA:\n`;
+  if (appState.vehicles.length === 0) {
+    txt += `   (Sin vehículos auxiliares en vía al momento del corte)\n\n`;
+  } else {
+    appState.vehicles.forEach((v, i) => {
+      txt += `   [#${i + 1}] Unidad      : ${v.vehicleType}\n`;
+      txt += `        Operador    : ${(v.driver || 'Operador').padEnd(22)} | Resp. a Bordo: ${v.leader || '—'}\n`;
+      txt += `        Canal Radio : ${v.radio} | Vía: ${v.via}\n`;
+      txt += `        Tramos      : ${v.zoneLabel} | Ingreso: ${v.timeIn} | Obs: ${v.notes || '—'}\n`;
+      txt += `   -------------------------------------------------------------------------------------\n`;
+    });
+    txt += `\n`;
+  }
+  
+  txt += `3. RESUMEN DE TRABAJOS CONCLUIDOS DURANTE EL TURNO:\n`;
+  if (appState.completedJobs.length === 0) {
+    txt += `   (Sin trabajos concluidos al corte)\n\n`;
+  } else {
+    appState.completedJobs.forEach((j, i) => {
+      txt += `   [#${i + 1}] ${j.type === 'crew' ? 'Cuadrilla' : 'Vehículo'} : ${(j.responsible || j.vehicleType).padEnd(22)} | Vía: ${j.via}\n`;
+      txt += `        Horarios    : Ingreso: ${j.timeIn} ➔ Salida: ${j.timeOut}\n`;
+      txt += `        Tramos      : ${j.zoneLabel} | Empresa: ${j.company}\n`;
+      txt += `   -------------------------------------------------------------------------------------\n`;
+    });
+    txt += `\n`;
+  }
+  
+  txt += `4. HISTORIAL DE NOVEDADES DEL TURNO:\n`;
+  if (appState.historyLog.length === 0) {
+    txt += `   (Sin registros en la bitácora)\n`;
+  } else {
+    appState.historyLog.slice(-10).reverse().forEach(log => {
+      const time = new Date(log.timestamp).toLocaleTimeString('es-PE', { hour12: false });
+      txt += `   [${time}] ${log.detail}\n`;
+    });
+  }
+  txt += `\n========================================================================================\n`;
+  txt += `OPERADOR DE CONTROL INTEGRADO (OCIR ATS) : ___________________________________________\n`;
+  txt += `SUPERVISOR DE OPERACIONES (SPCO L2)      : ___________________________________________\n`;
+  
+  reportBox.innerText = txt;
+}
+
+
+// ------------------------------------------------------------------------------
+// SISTEMA DE CONTROL DE CATENARIA Y TENSIÓN 1500V DC (METRO DE LIMA LÍNEA 2)
+// ------------------------------------------------------------------------------
+function initCatenaryControl() {
+  const btnPanel = document.getElementById('btn-catenary-panel');
+  const btnAllOn = document.getElementById('btn-catenary-all-on');
+  const btnAllOff = document.getElementById('btn-catenary-all-off');
+  const btnToggleMode = document.getElementById('btn-catenary-toggle-mode');
+  
+  if (btnPanel) {
+    btnPanel.addEventListener('click', () => {
+      playSound('coin');
+      renderCatenarySectorGrid();
+      openModal('modal-catenary');
+    });
+  }
+  
+  if (btnAllOn) {
+    btnAllOn.addEventListener('click', () => {
+      appState.catenary.deenergizedZones = [];
+      playSound('1up');
+      persistState();
+      renderAll();
+      renderCatenarySectorGrid();
+      updateCatenaryButtonStatus();
+      showToast('⚡ Catenaria: Tensión 1500V DC RESTABLECIDA en toda la Vía Principal.', 'success');
+    });
+  }
+  
+  if (btnAllOff) {
+    btnAllOff.addEventListener('click', () => {
+      appState.catenary.deenergizedZones = ZONAS_CATENARIA.map(z => z.id);
+      playSound('forbidden');
+      persistState();
+      renderAll();
+      renderCatenarySectorGrid();
+      updateCatenaryButtonStatus();
+      showToast('⛔ Catenaria: CORTE GENERAL DE TENSIÓN aplicado (0V en toda la línea).', 'danger');
+    });
+  }
+  
+  if (btnToggleMode) {
+    btnToggleMode.addEventListener('click', () => {
+      appState.catenary.interactiveMode = !appState.catenary.interactiveMode;
+      btnToggleMode.classList.toggle('active', appState.catenary.interactiveMode);
+      playSound('jump');
+      if (appState.catenary.interactiveMode) {
+        showToast('🔌 Modo selector activo: Haz clic directamente sobre cualquier tramo en la vía para cortar o energizar 1500V.', 'info');
+        closeModal('modal-catenary');
+      } else {
+        showToast('Modo selector desactivado.', 'info');
+      }
+    });
+  }
+  
+  updateCatenaryButtonStatus();
+}
+
+function updateCatenaryButtonStatus() {
+  const btn = document.getElementById('btn-catenary-panel');
+  const icon = document.getElementById('catenary-icon');
+  const text = document.getElementById('catenary-status-text');
+  if (!btn || !icon || !text) return;
+  
+  const cuts = appState.catenary.deenergizedZones.length;
+  const total = ZONAS_CATENARIA.length;
+  
+  btn.className = 'action-btn btn-catenary';
+  
+  if (cuts === 0) {
+    icon.textContent = '⚡';
+    text.textContent = '1500V: Conforme';
+  } else if (cuts >= total) {
+    icon.textContent = '⛔';
+    text.textContent = '0V: Corte Total';
+    btn.classList.add('catenary-danger');
+  } else if (cuts === 1 && appState.catenary.deenergizedZones.includes('Z-36')) {
+    icon.textContent = '⚡';
+    text.textContent = '1500V (Z-36: 0V)';
+  } else {
+    icon.textContent = '⚡';
+    text.textContent = `${cuts} Zonas 0V`;
+    btn.classList.add('catenary-warning');
+  }
+}
+
+function renderCatenarySectorGrid() {
+  const grid = document.getElementById('catenary-sector-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  
+  ZONAS_CATENARIA.forEach(zone => {
+    const isCut = appState.catenary.deenergizedZones.includes(zone.id);
+    const card = document.createElement('div');
+    card.className = `catenary-sector-card ${isCut ? 'deenergized' : ''}`;
+    
+    card.innerHTML = `
+      <div class="sector-info">
+        <span class="sector-title">${zone.name}</span>
+        <span class="sector-status">${isCut ? '⛔ CORTE DE TENSIÓN (0V)' : '⚡ ENERGIZADO (1500V DC)'}</span>
+      </div>
+      <button class="sector-toggle-btn ${isCut ? 'btn-restore' : 'btn-cut'}" type="button">
+        ${isCut ? 'Restablecer' : 'Cortar 0V'}
+      </button>
+    `;
+    
+    const btn = card.querySelector('.sector-toggle-btn');
+    btn.addEventListener('click', () => {
+      toggleZoneCatenary(zone.id);
+      renderCatenarySectorGrid();
+    });
+    
+    grid.appendChild(card);
+  });
+}
+
+function toggleZoneCatenary(zoneId) {
+  const idx = appState.catenary.deenergizedZones.indexOf(zoneId);
+  const zone = ZONAS_CATENARIA.find(z => z.id === zoneId);
+  const name = zone ? zone.name : zoneId;
+  
+  if (idx !== -1) {
+    // Restablecer tensión
+    appState.catenary.deenergizedZones.splice(idx, 1);
+    playSound('coin');
+    showToast(`⚡ Catenaria [${name}]: Tensión 1500V DC restablecida.`, 'success');
+  } else {
+    // Aplicar corte
+    appState.catenary.deenergizedZones.push(zoneId);
+    playSound('laser');
+    showToast(`⛔ Catenaria [${name}]: CORTE DE TENSIÓN 1500V aplicado (Libranza de vía).`, 'warning');
+  }
+  
+  persistState();
+  renderAll();
+  updateCatenaryButtonStatus();
+}
+
+function renderCatenaryLayer() {
+  const layer = document.getElementById('catenary-layer');
+  if (!layer) return;
+  layer.innerHTML = '';
+  
+  ZONAS_CATENARIA.forEach(zone => {
+    const isCut = appState.catenary.deenergizedZones.includes(zone.id);
+    const gZone = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    gZone.setAttribute('class', 'catenary-sector-group');
+    gZone.setAttribute('data-zone-id', zone.id);
+    
+    // Hilo de contacto animado estilo flujo de energía que parecía energía
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', zone.xStart);
+    line.setAttribute('y1', zone.y);
+    line.setAttribute('x2', zone.xEnd);
+    line.setAttribute('y2', zone.y);
+    line.setAttribute('class', `track-power-flow ${isCut ? 'catenary-cut' : ''}`);
+    line.setAttribute('title', `${zone.name} [${isCut ? '0V CORTE' : '1500V DC'}]. Clic para alternar.`);
+    line.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleZoneCatenary(zone.id);
+    });
+    gZone.appendChild(line);
+    
+    // Ramales D1 y D2 si aplica
+    if (zone.hasD1) {
+      const pathD1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      pathD1.setAttribute('d', 'M 2920,216 L 3050,43');
+      pathD1.setAttribute('fill', 'none');
+      pathD1.setAttribute('class', `track-power-flow ${isCut ? 'catenary-cut' : ''}`);
+      pathD1.setAttribute('title', `D1 hacia PTSA [${isCut ? '0V CORTE' : '1500V DC'}]`);
+      pathD1.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleZoneCatenary(zone.id);
+      });
+      gZone.appendChild(pathD1);
+    }
+    
+    if (zone.hasD2) {
+      const pathD2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      pathD2.setAttribute('d', 'M 3440,216 L 3310,43');
+      pathD2.setAttribute('fill', 'none');
+      pathD2.setAttribute('class', `track-power-flow ${isCut ? 'catenary-cut' : ''}`);
+      pathD2.setAttribute('title', `D2 hacia PTSA [${isCut ? '0V CORTE' : '1500V DC'}]`);
+      pathD2.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleZoneCatenary(zone.id);
+      });
+      gZone.appendChild(pathD2);
+    }
+    
+    // Cartela técnica si la zona está desenergizada (0V)
+    if (isCut) {
+      const midX = zone.xStart + (zone.xEnd - zone.xStart) / 2;
+      const badgeY = zone.via === 'V1' ? zone.y + 16 : zone.y - 16;
+      const gBadge = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      gBadge.setAttribute('class', 'catenary-cut-badge');
+      gBadge.setAttribute('transform', `translate(${midX}, ${badgeY})`);
+      
+      gBadge.innerHTML = `
+        <rect x="-44" y="-8.5" width="88" height="17" rx="3.5" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.2" />
+        <text x="0" y="3.5" fill="#fecaca" font-size="8" font-family="monospace" font-weight="900" text-anchor="middle">⚡ ZONA ${zone.num}: 0V</text>
+      `;
+      gZone.appendChild(gBadge);
+    }
+    
+    layer.appendChild(gZone);
+  });
+}
+
+// ------------------------------------------------------------------------------
+// 19. PERSISTENCIA LOCAL
+// ------------------------------------------------------------------------------
+function persistState() {
+  try {
+    const payload = {
+      crews: appState.crews,
+      vehicles: appState.vehicles,
+      completedJobs: appState.completedJobs,
+      historyLog: appState.historyLog,
+      switchesState: appState.switchesState,
+      audioEnabled: appState.audioEnabled,
+      catenary: appState.catenary
+    };
+    localStorage.setItem(appState.STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {
+    console.error('Error al guardar en LocalStorage:', e);
+  }
+}
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(appState.STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.crews)) appState.crews = data.crews;
+      if (Array.isArray(data.vehicles)) appState.vehicles = data.vehicles;
+      if (Array.isArray(data.completedJobs)) appState.completedJobs = data.completedJobs;
+      if (Array.isArray(data.historyLog)) appState.historyLog = data.historyLog;
+      if (data.switchesState) appState.switchesState = data.switchesState;
+      if (data.catenary && Array.isArray(data.catenary.deenergizedZones)) {
+        appState.catenary.deenergizedZones = data.catenary.deenergizedZones;
+        updateCatenaryButtonStatus();
+      }
+      if (typeof data.audioEnabled === 'boolean') {
+        appState.audioEnabled = data.audioEnabled;
+        const btn = document.getElementById('btn-sound-toggle');
+        const icon = document.getElementById('sound-icon');
+        const text = document.getElementById('sound-text');
+        if (btn && icon && text) {
+          if (appState.audioEnabled) {
+            btn.classList.add('sound-on');
+            icon.textContent = '🔊';
+            text.textContent = 'Audio ATS';
+          } else {
+            btn.classList.remove('sound-on');
+            icon.textContent = '🔇';
+            text.textContent = 'Silenciado';
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('No se encontraron datos previos');
+  }
+}
+
+// ------------------------------------------------------------------------------
+// 20. NOTIFICACIONES TOAST
+// ------------------------------------------------------------------------------
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  if (type === 'success') toast.style.borderColor = '#10b981';
+  if (type === 'warning') toast.style.borderColor = '#f59e0b';
+  if (type === 'danger') toast.style.borderColor = '#ef4444';
+  
+  toast.textContent = message;
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'toastOut 0.25s forwards';
+    setTimeout(() => toast.remove(), 250);
+  }, 3200);
+}
