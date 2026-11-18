@@ -9,6 +9,7 @@ let lastAnimTimestamp = performance.now();
 // Factor de amplitud global: con prefers-reduced-motion se atenúa el movimiento
 // decorativo (bob, piernas, chug) en lugar de congelar al personal sobre la vía.
 const AMP_MOVIMIENTO = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 0.3 : 1;
+const CREW_VISUAL_SCALE = 1.55;
 
 // Cache por ficha de los nodos .crew-work-sparks (NodeList estático). Se invalida
 // sola si renderEntitiesDOM() reconstruye el token (cambia la referencia al <g>).
@@ -25,6 +26,22 @@ function apagarSparksDeCrew(crew, el) {
   if (!crew._sparksLit) return;
   crew._sparksLit = false;
   nodosSparksDeCrew(crew, el).forEach(sp => { sp.style.opacity = "0"; });
+}
+
+function aplicarSpriteCrewSiActivo(crew, el) {
+  if (!el) return;
+  const atlasKey = crewSpriteAtlasKey(crew);
+  if (!atlasKey) return;
+  if (crew._spriteFrame === undefined) return;
+  spritePilotSetFrame(el, atlasKey, crew._spriteFrame);
+}
+
+function aplicarSpriteVehSiActivo(veh, el) {
+  if (!el) return;
+  const atlasKey = vehicleSpriteAtlasKey(veh);
+  if (!atlasKey) return;
+  if (veh._spriteFrame === undefined) return;
+  spritePilotSetFrame(el, atlasKey, veh._spriteFrame);
 }
 
 function initAnimationEngine() {
@@ -49,11 +66,24 @@ function initAnimationEngine() {
     // 1. Actualizar animacion de Cuadrillas a pie
     asignarSeguidoresDeGrupo();
     appState.crews.forEach(crew => {
+      const crewVisual = getCrewModel(crew);
+      const crewProfile = crewVisual.profile || getCrewVisualProfile(crewVisual.index);
       const minX = (crew.xMin || 100) + 25;
       const maxX = (crew.xMax || 300) - 25;
       const liderGrupo = crew.seguidorDe ? appState.crews.find(c => c.id === crew.seguidorDe) : null;
       if (liderGrupo) copiarEstadoSeguidor(crew, liderGrupo);
-      
+
+      const spriteStateCrew = spritePilotStateForCrew(crew);
+      const crewAtlasKey = crewSpriteAtlasKey(crew);
+      if (crewAtlasKey) {
+        if (liderGrupo) {
+          crew._spriteState = liderGrupo._spriteState;
+          crew._spritePhase = liderGrupo._spritePhase;
+          crew._spriteFrame = liderGrupo._spriteFrame;
+        }
+        advanceSpritePilotFrame(crew, crewAtlasKey, spriteStateCrew, dt, !!liderGrupo);
+      }
+
       if (crew.inSafeZone) {
         crew.isWorking = false;
         const el = document.getElementById(`token-${crew.id}`);
@@ -74,11 +104,26 @@ function initAnimationEngine() {
             if (cones) cones.style.display = "none";
             const thumbs = el.querySelector(".crew-safe-thumbsup");
             if (thumbs) thumbs.style.display = "block";
-            const tamper = el.querySelector(".crew-tamper-tool");
-            if (tamper) tamper.style.display = "none";
+            el.querySelectorAll(".crew-svg-fallback .crew-tamper-tool").forEach(tamper => {
+              tamper.style.display = "none";
+              tamper.classList.remove("is-working");
+            });
+            const roleAccessory = el.querySelector(".crew-role-accessory");
+            if (roleAccessory) {
+              roleAccessory.style.display = "none";
+              roleAccessory.classList.remove("is-working");
+            }
             const patrol = el.querySelector(".crew-patrol-tool");
             if (patrol) patrol.style.display = "none";
+            const sparksOverlay = el.querySelector(".crew-sparks-overlay");
+            if (sparksOverlay) sparksOverlay.style.display = "none";
           }
+          const visual = el.querySelector(".crew-visual");
+          const safeVisualTransform = `translate(0, -15) scale(${CREW_VISUAL_SCALE}) translate(0, 15)`;
+          if (visual && visual.getAttribute("transform") !== safeVisualTransform) {
+            visual.setAttribute("transform", safeVisualTransform);
+          }
+          aplicarSpriteCrewSiActivo(crew, el);
         }
         return;
       }
@@ -153,7 +198,7 @@ function initAnimationEngine() {
         
         if (crew.workTimer <= 0) {
           crew.isWorking = false;
-          crew.workCountdown = 6 + Math.random() * 5;
+          crew.workCountdown = crewProfile.walkSeconds + Math.random() * 1.5;
           const bubbleEl = document.getElementById(`retro-bubble-${crew.id}`);
           if (bubbleEl) bubbleEl.style.display = 'none';
         }
@@ -169,16 +214,16 @@ function initAnimationEngine() {
           crew.x = curMaxX;
           crew.dir = -1;
           crew.isWorking = true;
-          crew.workTimer = 3.6;
+          crew.workTimer = crewProfile.workSeconds;
         } else if (crew.x <= curMinX) {
           crew.x = curMinX;
           crew.dir = 1;
           crew.isWorking = true;
-          crew.workTimer = 3.6;
+          crew.workTimer = crewProfile.workSeconds;
         } else if (crew.workCountdown <= 0) {
           crew.isWorking = true;
-          crew.workTimer = 3.2;
-          crew.workCountdown = 7 + Math.random() * 4;
+          crew.workTimer = crewProfile.workSeconds;
+          crew.workCountdown = crewProfile.walkSeconds + Math.random() * 1.5;
         }
       }
       
@@ -191,7 +236,7 @@ function initAnimationEngine() {
       if (crew.walkPhase === undefined) crew.walkPhase = Math.random() * Math.PI * 2;
       crew._swing += (targetSwing - crew._swing) * (1 - Math.exp(-10 * dt));
       if (!crew.isWorking) {
-        crew.walkPhase += dt * ((Math.abs(crew.speed) || 15) / 14) * Math.PI * 2;
+        crew.walkPhase += dt * ((Math.abs(crew.speed) || 15) / 14) * Math.PI * 2 * crewProfile.gait;
       }
       const swing = crew._swing;
       
@@ -208,18 +253,20 @@ function initAnimationEngine() {
         
         // Bob vertical sincronizado con el paso (2 apoyos por ciclo, máx 1.2px al caminar);
         // pulso leve en faena. Fundido por swing para no dar saltos al conmutar estado.
-        const bobWalk = -Math.cos(crew.walkPhase * 2) * 1.2 * swing * AMP_MOVIMIENTO;
-        const bobWork = Math.sin(timestamp / 210) * 1.0 * (1 - swing) * AMP_MOVIMIENTO;
+        const bobWalk = -Math.cos(crew.walkPhase * 2) * crewProfile.bob * swing * AMP_MOVIMIENTO;
+        const bobWork = Math.sin(timestamp / (185 + crewVisual.index * 13)) * (0.7 + crewProfile.bob * 0.25) * (1 - swing) * AMP_MOVIMIENTO;
         el.setAttribute("transform", `translate(${crew.x.toFixed(1)}, ${(yBase + bobWalk + bobWork).toFixed(1)}) scale(${semanticScale.toFixed(3)})`);
         
         // Squash & stretch de videojuego para dar peso y juego al personaje
         // (el caminar se liga a walkPhase: estira al alzar el cuerpo, comprime al apoyar)
         const visual = el.querySelector(".crew-visual");
         if (visual) {
-          const squashY = 1 + Math.sin(timestamp / 120) * 0.035 * (1 - swing)
+          const squashY = 1 + Math.sin(timestamp / (105 + crewVisual.index * 11)) * 0.035 * (1 - swing)
                         - Math.cos(crew.walkPhase * 2) * 0.035 * swing;
           const squashX = (crew.dir || 1) * (1 / squashY);
-          visual.setAttribute("transform", `scale(${squashX.toFixed(3)}, ${squashY.toFixed(3)})`);
+          const sx = squashX * CREW_VISUAL_SCALE;
+          const sy = squashY * CREW_VISUAL_SCALE;
+          visual.setAttribute("transform", `translate(0, -15) scale(${sx.toFixed(3)}, ${sy.toFixed(3)}) translate(0, 15)`);
         }
         
         // Linterna: el atributo se escribe solo si cambia el sentido de la marcha
@@ -264,14 +311,25 @@ function initAnimationEngine() {
           const cones = el.querySelector(".crew-safety-cones");
           if (cones) cones.style.display = modoHerramientas === "work" ? "block" : "none";
           
-          const tamper = el.querySelector(".crew-tamper-tool");
-          if (tamper) tamper.style.display = modoHerramientas === "work" ? "block" : "none";
+          const trabajandoAhora = modoHerramientas === "work";
+          el.querySelectorAll(".crew-svg-fallback .crew-tamper-tool").forEach(tamper => {
+            tamper.style.display = trabajandoAhora ? "block" : "none";
+            tamper.classList.toggle("is-working", trabajandoAhora);
+          });
+          const roleAccessory = el.querySelector(".crew-role-accessory");
+          if (roleAccessory) {
+            roleAccessory.style.display = "block";
+            roleAccessory.classList.toggle("is-working", trabajandoAhora);
+          }
           
           const patrol = el.querySelector(".crew-patrol-tool");
           if (patrol) patrol.style.display = modoHerramientas === "walk" ? "block" : "none";
           
           const thumbs = el.querySelector(".crew-safe-thumbsup");
           if (thumbs) thumbs.style.display = "none";
+
+          const sparksOverlay = el.querySelector(".crew-sparks-overlay");
+          if (sparksOverlay) sparksOverlay.style.display = modoHerramientas === "work" ? "block" : "none";
         }
 
         // Kinemática procedimental: walk-cycle ligado a walkPhase y amortiguado por
@@ -280,7 +338,7 @@ function initAnimationEngine() {
         const legR = el.querySelector(".crew-leg-right");
         if (legL && legR && (swing > 0.001 || crew._legsActive)) {
           crew._legsActive = swing > 0.001;
-          const legAngle = Math.sin(crew.walkPhase) * 22 * (crew.dir || 1) * swing * AMP_MOVIMIENTO;
+          const legAngle = Math.sin(crew.walkPhase) * crewProfile.stepAngle * (crew.dir || 1) * swing * AMP_MOVIMIENTO;
           legL.setAttribute("transform", `rotate(${legAngle.toFixed(2)}, -3, 4)`);
           legR.setAttribute("transform", `rotate(${(-legAngle).toFixed(2)}, 3, 4)`);
         }
@@ -296,9 +354,13 @@ function initAnimationEngine() {
         
         const label = el.querySelector(".crew-status-label");
         if (label) {
-          const textoLabel = crew.isWorking ? `👷 ${crew.responsible} [Trabajando]` : `👷 ${crew.responsible} (${crew.count || '?'}p)`;
+          const textoLabel = crew.isWorking
+            ? `👷 ${crew.responsible} [Trabajando]`
+            : `👷 ${crew.responsible} (${crew.count || '?'}p)`;
           if (label.textContent !== textoLabel) label.textContent = textoLabel;
         }
+
+        aplicarSpriteCrewSiActivo(crew, el);
       }
     });
     
@@ -328,7 +390,13 @@ function initAnimationEngine() {
       const objetivoBlend = enMarcha ? 1 : 0;
       if (veh._moveBlend === undefined) veh._moveBlend = objetivoBlend;
       veh._moveBlend += (objetivoBlend - veh._moveBlend) * (1 - Math.exp(-8 * dt));
-      
+
+      const spriteStateVeh = spritePilotStateForVehicle(veh);
+      const vehicleAtlasKey = vehicleSpriteAtlasKey(veh);
+      if (vehicleAtlasKey) {
+        advanceSpritePilotFrame(veh, vehicleAtlasKey, spriteStateVeh, dt, false);
+      }
+
       if (veh.x >= curMaxX) {
         veh.x = curMaxX;
         veh.dir = -1;
@@ -382,7 +450,10 @@ function initAnimationEngine() {
           }
         }
 
-        // Ruedas: solo se escriben cuando cambia el grado efectivo (y nada si está parada)
+        // Ruedas: giro 100% por JS (attribute transform, wheelDeg según distancia);
+        // el CSS ya no anima .veh-wheel-spoke. No se escribe nada con blend <= 0.02,
+        // de modo que al detenerse el vehículo las ruedas quedan congeladas en su
+        // último ángulo (solo se escriben cuando cambia el grado efectivo).
         const spokes = el.querySelectorAll(".veh-wheel-spoke");
         if (spokes.length > 0 && blend > 0.02) {
           const wheelDeg = ((veh.x * 14) % 360).toFixed(1);
@@ -394,6 +465,8 @@ function initAnimationEngine() {
 
         // Mariposa de escape: aleteo por CSS (.veh-exhaust-flapper / flapperBounce);
         // sin transform JS que la animación CSS pisaría de todos modos.
+
+        aplicarSpriteVehSiActivo(veh, el);
       }
     });
     

@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Simulador ATS — Monitoreo de Trabajos en Vía Principal | OCIR Línea 2</title>
   <link rel="stylesheet" href="css/base.css?v=20261114_01">
-  <link rel="stylesheet" href="css/track-svg.css?v=20261114_01">
-  <link rel="stylesheet" href="css/sprites-animations.css?v=20261114_01">
+  <link rel="stylesheet" href="css/track-svg.css?v=20261117_01">
+  <link rel="stylesheet" href="css/sprites-animations.css?v=20261117_07">
   <link rel="stylesheet" href="css/modals-dock.css?v=20261114_01">
 
 </head>
@@ -142,6 +142,24 @@
             <rect x="5" width="5" height="10" fill="#0f172a" />
           </pattern>
 
+          <!-- Módulo 3D prerenderizado en Blender; la línea ATS SVG se dibuja encima -->
+          <pattern id="vp-track-blender-pattern" width="160" height="30" patternUnits="userSpaceOnUse">
+            <image href="assets/sprites/vp/environment/track-module.png?v=20261116_01" width="160" height="30" preserveAspectRatio="none" />
+          </pattern>
+
+          <!-- Superficie modular de andén: textura fija, sin codificar estados ATS -->
+          <linearGradient id="vp-platform-surface" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#253a54" />
+            <stop offset="18%" stop-color="#172a41" />
+            <stop offset="100%" stop-color="#0c1727" />
+          </linearGradient>
+          <pattern id="vp-platform-panels" width="24" height="42" patternUnits="userSpaceOnUse">
+            <rect width="24" height="42" fill="url(#vp-platform-surface)" />
+            <path d="M0 1H24 M0 41H24" stroke="#8da4bd" stroke-opacity="0.22" stroke-width="1" />
+            <path d="M12 5V37" stroke="#607893" stroke-opacity="0.16" stroke-width="1" />
+            <path d="M2 4H8" stroke="#cbd5e1" stroke-opacity="0.12" stroke-width="1" />
+          </pattern>
+
           <!-- Degradados de Carrocería Pesada Industrial y Cabina Bivial -->
           <linearGradient id="veh-cab-paint" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stop-color="#fbbf24" />
@@ -244,25 +262,37 @@
           <line x1="0" y1="352" x2="3550" y2="352" stroke="#38bdf8" stroke-width="1.2" stroke-dasharray="6 8" opacity="0.35" />
         </g>
 
-        <!-- Capa de Franjas y Selección Multi-Zona de Vía -->
-        <g id="work-span-layer"></g>
-        <!-- Capa de previsualización durante arrastre (NO borra work-span-layer) -->
-        <g id="drag-selection-layer"></g>
-
         <!-- Capa de Ondulaciones (Ripples) al soltar fichas -->
         <g id="ripples-layer"></g>
 
         <!-- Capa de Zonas de Vía (Tramos Clicables y Exclusiones) -->
         <g id="track-zones-layer"></g>
 
-        <!-- Capa Interactiva de Catenaria 1500V DC (Hilos de Contacto por Tramo) -->
-        <g id="catenary-layer"></g>
-
         <!-- Capa de Infraestructura Fija (Vías, Cambiavías, Estaciones, Pozos) -->
         <g id="infrastructure-layer">
-          <!-- Durmientes de concreto (Ties/Sleepers) bajo vías principales -->
-          <line x1="50" y1="220" x2="3510" y2="220" stroke="#162238" stroke-width="13" stroke-dasharray="2 10" pointer-events="none" />
-          <line x1="50" y1="330" x2="3510" y2="330" stroke="#162238" stroke-width="13" stroke-dasharray="2 10" pointer-events="none" />
+          <!-- Lecho ferroviario fijo: balasto, durmientes y cantos metálicos.
+               La línea ATS principal queda encima y conserva sus colores/estados. -->
+          <line x1="50" y1="220" x2="3510" y2="220" stroke="#070d17" stroke-width="25" stroke-linecap="round" pointer-events="none" />
+          <line x1="50" y1="330" x2="3510" y2="330" stroke="#070d17" stroke-width="25" stroke-linecap="round" pointer-events="none" />
+          <line x1="50" y1="220" x2="3510" y2="220" stroke="#293b52" stroke-width="15" stroke-dasharray="5 11" stroke-linecap="butt" pointer-events="none" />
+          <line x1="50" y1="330" x2="3510" y2="330" stroke="#293b52" stroke-width="15" stroke-dasharray="5 11" stroke-linecap="butt" pointer-events="none" />
+          <line x1="50" y1="214.5" x2="3510" y2="214.5" stroke="#a8b8c8" stroke-opacity="0.48" stroke-width="1.2" pointer-events="none" />
+          <line x1="50" y1="225.5" x2="3510" y2="225.5" stroke="#a8b8c8" stroke-opacity="0.48" stroke-width="1.2" pointer-events="none" />
+          <line x1="50" y1="324.5" x2="3510" y2="324.5" stroke="#a8b8c8" stroke-opacity="0.48" stroke-width="1.2" pointer-events="none" />
+          <line x1="50" y1="335.5" x2="3510" y2="335.5" stroke="#a8b8c8" stroke-opacity="0.48" stroke-width="1.2" pointer-events="none" />
+          <!-- Textura 3D fija de Blender bajo los tramos interactivos -->
+          <rect x="50" y="205" width="3460" height="30" fill="url(#vp-track-blender-pattern)" pointer-events="none" />
+          <rect x="50" y="315" width="3460" height="30" fill="url(#vp-track-blender-pattern)" pointer-events="none" />
+          <!-- Bases 3D de cruces en capa inferior; las agujas/estados SVG van encima -->
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="136.0" height="30" transform="translate(670, 220) rotate(54)" preserveAspectRatio="none" />
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="136.0" height="30" transform="translate(1000, 220) rotate(54)" preserveAspectRatio="none" />
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="136.0" height="30" transform="translate(1000, 330) rotate(-54)" preserveAspectRatio="none" />
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="136.0" height="30" transform="translate(1440, 220) rotate(54)" preserveAspectRatio="none" />
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="136.0" height="30" transform="translate(1440, 330) rotate(-54)" preserveAspectRatio="none" />
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="136.0" height="30" transform="translate(2080, 220) rotate(54)" preserveAspectRatio="none" />
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="130.4" height="30" transform="translate(2780, 330) rotate(-57.53)" preserveAspectRatio="none" />
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="217.5" height="30" transform="translate(2920, 220) rotate(-65.56)" preserveAspectRatio="none" />
+          <image class="blender-switch-rail" href="assets/sprites/vp/environment/track-module.png?v=20261116_01" x="0" y="-15" width="221.8" height="30" transform="translate(3440, 220) rotate(-116.79)" preserveAspectRatio="none" />
 
           <!-- Paragolpes Extremo Oeste (Cola Maniobras Evitamiento) -->
           <g transform="translate(40, 205)">
@@ -385,30 +415,40 @@
           <circle cx="3010" cy="22" r="5" fill="#38bdf8" />
           <circle cx="3340" cy="22" r="5" fill="#10b981" />
 
-          <!-- DIAGONAL 1 (D1): Nace antes de E24 en Vía 2 y sube a PTSA (Y=220 a Y=22) -->
-          <g class="switch-group" id="ramal-ptsa-d1" data-switch-id="D1" title="Diagonal D1 hacia Patio Santa Anita">
-            <path d="M 2920,220 L 3010,22" fill="none" class="crossover-line" stroke-width="5" />
+            <!-- DIAGONAL 1 (D1): Nace antes de E24 en Vía 2 y sube a PTSA (Y=220 a Y=22) -->
+            <g class="switch-group" id="ramal-ptsa-d1" data-switch-id="D1" title="Diagonal D1 hacia Patio Santa Anita">
+              <path d="M 2920,220 L 3010,22" fill="none" class="crossover-line" stroke-width="5" />
             <circle cx="2920" cy="220" r="5" class="switch-point" />
             <text x="2955" y="115" fill="#38bdf8" font-size="12" font-weight="900" font-family="monospace" text-anchor="middle">D1</text>
           </g>
 
-          <!-- DIAGONAL 2 (D2): Nace pasando E24 en Vía 2 y sube a PTSA (Y=220 a Y=22) -->
-          <g class="switch-group" id="ramal-ptsa-d2" data-switch-id="D2" title="Diagonal D2 hacia Patio Santa Anita">
-            <path d="M 3440,220 L 3340,22" fill="none" class="crossover-line" stroke-width="5" />
+            <!-- DIAGONAL 2 (D2): Nace pasando E24 en Vía 2 y sube a PTSA (Y=220 a Y=22) -->
+            <g class="switch-group" id="ramal-ptsa-d2" data-switch-id="D2" title="Diagonal D2 hacia Patio Santa Anita">
+              <path d="M 3440,220 L 3340,22" fill="none" class="crossover-line" stroke-width="5" />
             <circle cx="3440" cy="220" r="5" class="switch-point" />
             <text x="3405" y="115" fill="#10b981" font-size="12" font-weight="900" font-family="monospace" text-anchor="middle">D2</text>
           </g>
         </g>
 
+        <!-- Ocupación/previsualización por encima del arte estático para que se lean los tramos -->
+        <g id="work-span-layer"></g>
+        <g id="drag-selection-layer"></g>
+
+        <!-- Catenaria por encima del arte estático para mantener visible el estado ATS -->
+        <g id="catenary-layer"></g>
+
         <!-- Capa de Estaciones y Andenes (E20 a E24) - Recuadro Ampliado sin rebasar límites del andén -->
         <g id="stations-layer">
           <!-- E20: Evitamiento (Centro X = 480) -->
           <g class="station-group" id="st-e20" transform="translate(380, 0)" title="Estación E20 Evitamiento">
-            <rect class="station-pill-badge" x="0" y="98" width="200" height="42" rx="21" />
-            <text class="station-pill-text" x="100" y="124">E20 · EVITAMIENTO</text>
+            <rect class="station-pill-badge" x="0" y="82" width="200" height="42" rx="21" />
+            <image class="station-sign-blender" href="assets/sprites/vp/environment/station-sign-module.png?v=20261116_01" x="0" y="82" width="200" height="42" preserveAspectRatio="none" />
+            <rect class="station-sign-glint" x="9" y="85" width="24" height="2" rx="1" pointer-events="none" />
+            <text class="station-pill-text" x="100" y="108">E20 · EVITAMIENTO</text>
             
             <!-- Andén Vía 2 con PSD LEDs y franja podotáctil amarilla -->
             <rect class="platform-box" x="0" y="148" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="148" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="188" x2="196" y2="188" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="188" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="188" r="2.5" class="psd-led-blink" />
@@ -419,6 +459,7 @@
 
             <!-- Andén Vía 1 con PSD LEDs y franja podotáctil amarilla -->
             <rect class="platform-box" x="0" y="342" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="342" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="344" x2="196" y2="344" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="344" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="344" r="2.5" class="psd-led-blink" />
@@ -430,10 +471,13 @@
 
           <!-- E21: Óvalo Santa Anita (Centro X = 1260) -->
           <g class="station-group" id="st-e21" transform="translate(1160, 0)" title="Estación E21 Óvalo Santa Anita">
-            <rect class="station-pill-badge" x="0" y="98" width="200" height="42" rx="21" />
-            <text class="station-pill-text" x="100" y="124">E21 · ÓVALO STA. ANITA</text>
+            <rect class="station-pill-badge" x="0" y="82" width="200" height="42" rx="21" />
+            <image class="station-sign-blender" href="assets/sprites/vp/environment/station-sign-module.png?v=20261116_01" x="0" y="82" width="200" height="42" preserveAspectRatio="none" />
+            <rect class="station-sign-glint" x="9" y="85" width="24" height="2" rx="1" pointer-events="none" />
+            <text class="station-pill-text" x="100" y="108">E21 · ÓVALO STA. ANITA</text>
             
             <rect class="platform-box" x="0" y="148" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="148" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="188" x2="196" y2="188" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="188" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="188" r="2.5" class="psd-led-blink" />
@@ -443,6 +487,7 @@
             <text class="platform-text" x="100" y="173">ANDÉN VÍA 2</text>
 
             <rect class="platform-box" x="0" y="342" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="342" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="344" x2="196" y2="344" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="344" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="344" r="2.5" class="psd-led-blink" />
@@ -454,10 +499,13 @@
 
           <!-- E22: Colectora Industrial (Centro X = 1900) -->
           <g class="station-group" id="st-e22" transform="translate(1800, 0)" title="Estación E22 Colectora Industrial">
-            <rect class="station-pill-badge" x="0" y="98" width="200" height="42" rx="21" />
-            <text class="station-pill-text" x="100" y="124">E22 · COLECTORA IND.</text>
+            <rect class="station-pill-badge" x="0" y="82" width="200" height="42" rx="21" />
+            <image class="station-sign-blender" href="assets/sprites/vp/environment/station-sign-module.png?v=20261116_01" x="0" y="82" width="200" height="42" preserveAspectRatio="none" />
+            <rect class="station-sign-glint" x="9" y="85" width="24" height="2" rx="1" pointer-events="none" />
+            <text class="station-pill-text" x="100" y="108">E22 · COLECTORA IND.</text>
             
             <rect class="platform-box" x="0" y="148" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="148" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="188" x2="196" y2="188" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="188" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="188" r="2.5" class="psd-led-blink" />
@@ -467,6 +515,7 @@
             <text class="platform-text" x="100" y="173">ANDÉN VÍA 2</text>
 
             <rect class="platform-box" x="0" y="342" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="342" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="344" x2="196" y2="344" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="344" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="344" r="2.5" class="psd-led-blink" />
@@ -478,10 +527,13 @@
 
           <!-- E23: Hermilio Valdizán (Centro X = 2520) -->
           <g class="station-group" id="st-e23" transform="translate(2420, 0)" title="Estación E23 Hermilio Valdizán">
-            <rect class="station-pill-badge" x="0" y="98" width="200" height="42" rx="21" />
-            <text class="station-pill-text" x="100" y="124">E23 · H. VALDIZÁN</text>
+            <rect class="station-pill-badge" x="0" y="82" width="200" height="42" rx="21" />
+            <image class="station-sign-blender" href="assets/sprites/vp/environment/station-sign-module.png?v=20261116_01" x="0" y="82" width="200" height="42" preserveAspectRatio="none" />
+            <rect class="station-sign-glint" x="9" y="85" width="24" height="2" rx="1" pointer-events="none" />
+            <text class="station-pill-text" x="100" y="108">E23 · H. VALDIZÁN</text>
             
             <rect class="platform-box" x="0" y="148" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="148" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="188" x2="196" y2="188" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="188" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="188" r="2.5" class="psd-led-blink" />
@@ -491,6 +543,7 @@
             <text class="platform-text" x="100" y="173">ANDÉN VÍA 2</text>
 
             <rect class="platform-box" x="0" y="342" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="342" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="344" x2="196" y2="344" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="344" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="344" r="2.5" class="psd-led-blink" />
@@ -502,10 +555,13 @@
 
           <!-- E24: Mercado Santa Anita (Centro X = 3180) -->
           <g class="station-group" id="st-e24" transform="translate(3080, 0)" title="Estación E24 Mercado Santa Anita">
-            <rect class="station-pill-badge" x="0" y="98" width="200" height="42" rx="21" />
-            <text class="station-pill-text" x="100" y="124">E24 · MERCADO STA. ANITA</text>
+            <rect class="station-pill-badge" x="0" y="82" width="200" height="42" rx="21" />
+            <image class="station-sign-blender" href="assets/sprites/vp/environment/station-sign-module.png?v=20261116_01" x="0" y="82" width="200" height="42" preserveAspectRatio="none" />
+            <rect class="station-sign-glint" x="9" y="85" width="24" height="2" rx="1" pointer-events="none" />
+            <text class="station-pill-text" x="100" y="108">E24 · MERCADO STA. ANITA</text>
             
             <rect class="platform-box" x="0" y="148" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="148" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="188" x2="196" y2="188" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="188" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="188" r="2.5" class="psd-led-blink" />
@@ -515,6 +571,7 @@
             <text class="platform-text" x="100" y="173">ANDÉN VÍA 2</text>
 
             <rect class="platform-box" x="0" y="342" width="200" height="42" rx="7" />
+            <image class="platform-blender-sprite" href="assets/sprites/vp/environment/platform-module.png?v=20261116_02" x="0" y="342" width="200" height="42" preserveAspectRatio="none" />
             <line x1="4" y1="344" x2="196" y2="344" stroke="#facc15" stroke-width="2.5" stroke-dasharray="6 3" />
             <circle cx="20" cy="344" r="2.5" class="psd-led-blink" />
             <circle cx="60" cy="344" r="2.5" class="psd-led-blink" />
@@ -536,11 +593,10 @@
             <line x1="-36" y1="8" x2="36" y2="8" stroke="#475569" stroke-width="1.8" />
             <line x1="-36" y1="13" x2="36" y2="13" stroke="#475569" stroke-width="1.8" />
             <!-- Ventilador Industrial Ampliado -->
-            <!-- Ventilador Industrial con Rotación Nativa SVG Centrada en (-20, 28) -->
+            <!-- Ventilador Industrial con Rotación CSS Centrada en (-20, 28) -->
             <circle cx="-20" cy="28" r="14" fill="#070c14" stroke="#f59e0b" stroke-width="2" />
             <g transform="translate(-20, 28)">
               <g class="pozo-fan-blades">
-                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.75s" repeatCount="indefinite" />
                 <circle cx="0" cy="0" r="9" fill="none" stroke="#475569" stroke-width="1.2" />
                 <!-- 8 Aspas Axiales de Turboventilación -->
                 <line x1="-10" y1="0" x2="10" y2="0" stroke="#fde68a" stroke-width="2.2" stroke-linecap="round" />
@@ -551,6 +607,8 @@
                 <circle cx="0" cy="0" r="3.8" fill="#f59e0b" stroke="#78350f" stroke-width="0.8" />
               </g>
             </g>
+            <image class="pozo-blender-header" x="-45" y="0" width="90" height="48" href="assets/sprites/vp/environment/pv-header-static.png?v=20261116_01" preserveAspectRatio="none" />
+            <image class="pozo-blender-rotor" x="-34" y="14" width="28" height="28" href="assets/sprites/vp/environment/pv-rotor.png?v=20261116_01" preserveAspectRatio="none" />
             <text class="pozo-label-large" x="18" y="34">PV19</text>
           </g>
 
@@ -562,11 +620,10 @@
             <rect class="pozo-tower-large" x="-45" y="0" width="90" height="48" />
             <line x1="-36" y1="8" x2="36" y2="8" stroke="#475569" stroke-width="1.8" />
             <line x1="-36" y1="13" x2="36" y2="13" stroke="#475569" stroke-width="1.8" />
-            <!-- Ventilador Industrial con Rotación Nativa SVG Centrada en (-20, 28) -->
+            <!-- Ventilador Industrial con Rotación CSS Centrada en (-20, 28) -->
             <circle cx="-20" cy="28" r="14" fill="#070c14" stroke="#f59e0b" stroke-width="2" />
             <g transform="translate(-20, 28)">
               <g class="pozo-fan-blades">
-                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.75s" repeatCount="indefinite" />
                 <circle cx="0" cy="0" r="9" fill="none" stroke="#475569" stroke-width="1.2" />
                 <!-- 8 Aspas Axiales de Turboventilación -->
                 <line x1="-10" y1="0" x2="10" y2="0" stroke="#fde68a" stroke-width="2.2" stroke-linecap="round" />
@@ -577,6 +634,8 @@
                 <circle cx="0" cy="0" r="3.8" fill="#f59e0b" stroke="#78350f" stroke-width="0.8" />
               </g>
             </g>
+            <image class="pozo-blender-header" x="-45" y="0" width="90" height="48" href="assets/sprites/vp/environment/pv-header-static.png?v=20261116_01" preserveAspectRatio="none" />
+            <image class="pozo-blender-rotor" x="-34" y="14" width="28" height="28" href="assets/sprites/vp/environment/pv-rotor.png?v=20261116_01" preserveAspectRatio="none" />
             <text class="pozo-label-large" x="18" y="34">PV20</text>
           </g>
 
@@ -588,11 +647,10 @@
             <rect class="pozo-tower-large" x="-45" y="0" width="90" height="48" />
             <line x1="-36" y1="8" x2="36" y2="8" stroke="#475569" stroke-width="1.8" />
             <line x1="-36" y1="13" x2="36" y2="13" stroke="#475569" stroke-width="1.8" />
-            <!-- Ventilador Industrial con Rotación Nativa SVG Centrada en (-20, 28) -->
+            <!-- Ventilador Industrial con Rotación CSS Centrada en (-20, 28) -->
             <circle cx="-20" cy="28" r="14" fill="#070c14" stroke="#f59e0b" stroke-width="2" />
             <g transform="translate(-20, 28)">
               <g class="pozo-fan-blades">
-                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.75s" repeatCount="indefinite" />
                 <circle cx="0" cy="0" r="9" fill="none" stroke="#475569" stroke-width="1.2" />
                 <!-- 8 Aspas Axiales de Turboventilación -->
                 <line x1="-10" y1="0" x2="10" y2="0" stroke="#fde68a" stroke-width="2.2" stroke-linecap="round" />
@@ -603,6 +661,8 @@
                 <circle cx="0" cy="0" r="3.8" fill="#f59e0b" stroke="#78350f" stroke-width="0.8" />
               </g>
             </g>
+            <image class="pozo-blender-header" x="-45" y="0" width="90" height="48" href="assets/sprites/vp/environment/pv-header-static.png?v=20261116_01" preserveAspectRatio="none" />
+            <image class="pozo-blender-rotor" x="-34" y="14" width="28" height="28" href="assets/sprites/vp/environment/pv-rotor.png?v=20261116_01" preserveAspectRatio="none" />
             <text class="pozo-label-large" x="18" y="34">PV21</text>
           </g>
 
@@ -614,11 +674,10 @@
             <rect class="pozo-tower-large" x="-45" y="0" width="90" height="48" />
             <line x1="-36" y1="8" x2="36" y2="8" stroke="#475569" stroke-width="1.8" />
             <line x1="-36" y1="13" x2="36" y2="13" stroke="#475569" stroke-width="1.8" />
-            <!-- Ventilador Industrial con Rotación Nativa SVG Centrada en (-20, 28) -->
+            <!-- Ventilador Industrial con Rotación CSS Centrada en (-20, 28) -->
             <circle cx="-20" cy="28" r="14" fill="#070c14" stroke="#f59e0b" stroke-width="2" />
             <g transform="translate(-20, 28)">
               <g class="pozo-fan-blades">
-                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.75s" repeatCount="indefinite" />
                 <circle cx="0" cy="0" r="9" fill="none" stroke="#475569" stroke-width="1.2" />
                 <!-- 8 Aspas Axiales de Turboventilación -->
                 <line x1="-10" y1="0" x2="10" y2="0" stroke="#fde68a" stroke-width="2.2" stroke-linecap="round" />
@@ -629,6 +688,8 @@
                 <circle cx="0" cy="0" r="3.8" fill="#f59e0b" stroke="#78350f" stroke-width="0.8" />
               </g>
             </g>
+            <image class="pozo-blender-header" x="-45" y="0" width="90" height="48" href="assets/sprites/vp/environment/pv-header-static.png?v=20261116_01" preserveAspectRatio="none" />
+            <image class="pozo-blender-rotor" x="-34" y="14" width="28" height="28" href="assets/sprites/vp/environment/pv-rotor.png?v=20261116_01" preserveAspectRatio="none" />
             <text class="pozo-label-large" x="18" y="34">PV22</text>
           </g>
 
@@ -640,11 +701,10 @@
             <rect class="pozo-tower-large" x="-45" y="0" width="90" height="48" />
             <line x1="-36" y1="8" x2="36" y2="8" stroke="#475569" stroke-width="1.8" />
             <line x1="-36" y1="13" x2="36" y2="13" stroke="#475569" stroke-width="1.8" />
-            <!-- Ventilador Industrial con Rotación Nativa SVG Centrada en (-20, 28) -->
+            <!-- Ventilador Industrial con Rotación CSS Centrada en (-20, 28) -->
             <circle cx="-20" cy="28" r="14" fill="#070c14" stroke="#f59e0b" stroke-width="2" />
             <g transform="translate(-20, 28)">
               <g class="pozo-fan-blades">
-                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.75s" repeatCount="indefinite" />
                 <circle cx="0" cy="0" r="9" fill="none" stroke="#475569" stroke-width="1.2" />
                 <!-- 8 Aspas Axiales de Turboventilación -->
                 <line x1="-10" y1="0" x2="10" y2="0" stroke="#fde68a" stroke-width="2.2" stroke-linecap="round" />
@@ -655,6 +715,8 @@
                 <circle cx="0" cy="0" r="3.8" fill="#f59e0b" stroke="#78350f" stroke-width="0.8" />
               </g>
             </g>
+            <image class="pozo-blender-header" x="-45" y="0" width="90" height="48" href="assets/sprites/vp/environment/pv-header-static.png?v=20261116_01" preserveAspectRatio="none" />
+            <image class="pozo-blender-rotor" x="-34" y="14" width="28" height="28" href="assets/sprites/vp/environment/pv-rotor.png?v=20261116_01" preserveAspectRatio="none" />
             <text class="pozo-label-large" x="18" y="34">PV23</text>
           </g>
 
@@ -666,11 +728,10 @@
             <rect class="pozo-tower-large" x="-45" y="0" width="90" height="48" />
             <line x1="-36" y1="8" x2="36" y2="8" stroke="#475569" stroke-width="1.8" />
             <line x1="-36" y1="13" x2="36" y2="13" stroke="#475569" stroke-width="1.8" />
-            <!-- Ventilador Industrial con Rotación Nativa SVG Centrada en (-20, 28) -->
+            <!-- Ventilador Industrial con Rotación CSS Centrada en (-20, 28) -->
             <circle cx="-20" cy="28" r="14" fill="#070c14" stroke="#f59e0b" stroke-width="2" />
             <g transform="translate(-20, 28)">
               <g class="pozo-fan-blades">
-                <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="0.75s" repeatCount="indefinite" />
                 <circle cx="0" cy="0" r="9" fill="none" stroke="#475569" stroke-width="1.2" />
                 <!-- 8 Aspas Axiales de Turboventilación -->
                 <line x1="-10" y1="0" x2="10" y2="0" stroke="#fde68a" stroke-width="2.2" stroke-linecap="round" />
@@ -681,6 +742,8 @@
                 <circle cx="0" cy="0" r="3.8" fill="#f59e0b" stroke="#78350f" stroke-width="0.8" />
               </g>
             </g>
+            <image class="pozo-blender-header" x="-45" y="0" width="90" height="48" href="assets/sprites/vp/environment/pv-header-static.png?v=20261116_01" preserveAspectRatio="none" />
+            <image class="pozo-blender-rotor" x="-34" y="14" width="28" height="28" href="assets/sprites/vp/environment/pv-rotor.png?v=20261116_01" preserveAspectRatio="none" />
             <text class="pozo-label-large" x="18" y="34">PV24</text>
           </g>
         </g>
@@ -1257,10 +1320,10 @@
   <script src="js/vp/config-topology.js?v=20261114_01"></script>
   <script src="js/vp/safety-interlocking.js?v=20261114_01"></script>
   <script src="js/vp/audio-arcade.js?v=20261114_02"></script>
-  <script src="js/vp/sprites-catalog.js?v=20261114_01"></script>
-  <script src="js/vp/render-map.js?v=20261114_01"></script>
-  <script src="js/vp/drag-interactions.js?v=20261114_01"></script>
-  <script src="js/vp/animation-engine.js?v=20261114_01"></script>
+  <script src="js/vp/sprites-catalog.js?v=20261117_09"></script>
+  <script src="js/vp/render-map.js?v=20261117_04"></script>
+  <script src="js/vp/drag-interactions.js?v=20261117_04"></script>
+  <script src="js/vp/animation-engine.js?v=20261117_07"></script>
   <script src="js/vp/dock-reports.js?v=20261114_01"></script>
   <script src="js/vp/importador-spco.js?v=20261114_01"></script>
 </body>

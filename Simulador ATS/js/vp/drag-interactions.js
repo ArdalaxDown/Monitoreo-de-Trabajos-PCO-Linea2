@@ -26,6 +26,7 @@ function initPegmanMultiZoneDrag() {
     appState.draggedType = type;
     appState.hoveredVia = 'V2';
     appState.draggedZonesSet.clear();
+    appState.dragCandidateZoneId = null;
     appState.hasPaintedMultiZones = false;
     appState.isPaintingWithRightClick = false;
     appState.isCurrentHoverForbidden = false;
@@ -49,6 +50,29 @@ function initPegmanMultiZoneDrag() {
     
     clearDragSelectionSpan();
     playSound('jump');
+  }
+
+  function resolveDragTarget(svgPoint) {
+    const insideRailArea = svgPoint.x >= 40 && svgPoint.x <= 3520 && svgPoint.y >= 10 && svgPoint.y <= 480;
+    let targetVia = svgPoint.y >= 275 ? 'V1' : 'V2';
+    if (!insideRailArea) return { insideRailArea, targetVia, hitZone: null };
+
+    if (svgPoint.x >= 2890 && svgPoint.x <= 3040 && svgPoint.y <= 235) {
+      const expectedYD1 = 220 - (svgPoint.x - 2920) * (198.0 / 90.0);
+      if (Math.abs(svgPoint.y - expectedYD1) < 16) {
+        return { insideRailArea, targetVia: 'D1', hitZone: ZONAS_VIA.find(z => z.id === 'Z-RAMAL-D1') };
+      }
+    }
+
+    if (svgPoint.x >= 3320 && svgPoint.x <= 3460 && svgPoint.y <= 235) {
+      const expectedYD2 = 220 - (3440 - svgPoint.x) * (198.0 / 100.0);
+      if (Math.abs(svgPoint.y - expectedYD2) < 16) {
+        return { insideRailArea, targetVia: 'D2', hitZone: ZONAS_VIA.find(z => z.id === 'Z-RAMAL-D2') };
+      }
+    }
+
+    const hitZone = ZONAS_VIA.filter(z => !z.isRamal).find(z => svgPoint.x >= z.xStart && svgPoint.x <= z.xEnd);
+    return { insideRailArea, targetVia, hitZone };
   }
   
   if (chipCrew) {
@@ -97,12 +121,11 @@ function initPegmanMultiZoneDrag() {
       appState.hasPaintedMultiZones = true;
       
       const svgPoint = getSvgPoint(e.clientX, e.clientY);
-      const isInsideRailArea = svgPoint.x >= 40 && svgPoint.x <= 3520 && svgPoint.y >= 40 && svgPoint.y <= 480;
-      const targetVia = svgPoint.y >= 275 ? 'V1' : 'V2';
+      const resolved = resolveDragTarget(svgPoint);
+      const { hitZone, insideRailArea, targetVia } = resolved;
       appState.hoveredVia = targetVia;
-      
-      const hitZone = ZONAS_VIA.find(z => svgPoint.x >= z.xStart && svgPoint.x <= z.xEnd);
-      if (hitZone && isInsideRailArea) {
+      if (hitZone && insideRailArea) {
+        appState.dragCandidateZoneId = null;
         if (!appState.draggedZonesSet.has(hitZone.id)) {
           appState.draggedZonesSet.add(hitZone.id);
           playSound('laser');
@@ -123,7 +146,7 @@ function initPegmanMultiZoneDrag() {
         } else {
           clearForbidden();
         }
-        renderDragSelectionSpan(targetVia);
+        renderDragSelectionSpan(targetVia, Array.from(appState.draggedZonesSet));
       }
     }
   }, { capture: true });
@@ -154,32 +177,8 @@ function initPegmanMultiZoneDrag() {
     ghost.style.top = `${clientY}px`;
     
     const svgPoint = getSvgPoint(clientX, clientY);
-    const isInsideRailArea = svgPoint.x >= 40 && svgPoint.x <= 3520 && svgPoint.y >= 30 && svgPoint.y <= 480;
-    
-    let targetVia = svgPoint.y >= 275 ? 'V1' : 'V2';
-    let hitZone = null;
-    
-    // Proximidad interactiva a Ramal D1: (2920, 220) a (3010, 22)
-    if (svgPoint.x >= 2890 && svgPoint.x <= 3040 && svgPoint.y >= 15 && svgPoint.y <= 235) {
-      const expectedYD1 = 220 - (svgPoint.x - 2920) * (198.0 / 90.0);
-      if (Math.abs(svgPoint.y - expectedYD1) < 14 && svgPoint.y < 205) {
-        targetVia = 'D1';
-        hitZone = ZONAS_VIA.find(z => z.id === 'Z-RAMAL-D1');
-      }
-    }
-    
-    // Proximidad interactiva a Ramal D2: (3440, 220) a (3340, 22)
-    if (!hitZone && svgPoint.x >= 3320 && svgPoint.x <= 3460 && svgPoint.y >= 15 && svgPoint.y <= 235) {
-      const expectedYD2 = 220 - (3440 - svgPoint.x) * (198.0 / 100.0);
-      if (Math.abs(svgPoint.y - expectedYD2) < 14 && svgPoint.y < 205) {
-        targetVia = 'D2';
-        hitZone = ZONAS_VIA.find(z => z.id === 'Z-RAMAL-D2');
-      }
-    }
-    
-    if (!hitZone) {
-      hitZone = ZONAS_VIA.filter(z => !z.isRamal).find(z => svgPoint.x >= z.xStart && svgPoint.x <= z.xEnd);
-    }
+    const resolved = resolveDragTarget(svgPoint);
+    const { hitZone, insideRailArea, targetVia } = resolved;
     
     appState.hoveredVia = targetVia;
     
@@ -192,18 +191,21 @@ function initPegmanMultiZoneDrag() {
       ghostViaBadge.className = `ghost-via-badge via-${targetVia.toLowerCase()}`;
     }
     
-    if (hitZone && isInsideRailArea) {
+    if (hitZone && insideRailArea) {
       const isRightClick = (buttons & 2) === 2 || appState.isPaintingWithRightClick;
       
       // EL ARRASTRE DE VÍA ES ESTRICTAMENTE CON CLIC DERECHO:
       // Si el operador solo mueve el mouse (con zoom o paneo), NO se agregan tramos al Set.
       // Los tramos solo se van agregando cuando el operador aprieta o mantiene el clic derecho.
       if (isRightClick) {
+        appState.dragCandidateZoneId = null;
         appState.hasPaintedMultiZones = true;
         if (!appState.draggedZonesSet.has(hitZone.id)) {
           appState.draggedZonesSet.add(hitZone.id);
           playSound('waka');
         }
+      } else if (appState.draggedZonesSet.size === 0) {
+        appState.dragCandidateZoneId = hitZone.id;
       }
       
       const testZones = appState.draggedZonesSet.size > 0 ? Array.from(appState.draggedZonesSet) : [hitZone.id];
@@ -229,15 +231,17 @@ function initPegmanMultiZoneDrag() {
         clearForbidden();
       }
       
-      if (appState.draggedZonesSet.size > 0) {
-        renderDragSelectionSpan(targetVia);
-      } else {
-        clearDragSelectionSpan();
-      }
+      const previewZones = appState.draggedZonesSet.size > 0
+        ? Array.from(appState.draggedZonesSet)
+        : [hitZone.id];
+      renderDragSelectionSpan(targetVia, previewZones);
     } else {
       clearForbidden();
       if (appState.draggedZonesSet.size === 0) {
+        appState.dragCandidateZoneId = null;
         clearDragSelectionSpan();
+      } else {
+        renderDragSelectionSpan(targetVia, Array.from(appState.draggedZonesSet));
       }
     }
   }
@@ -266,25 +270,24 @@ function initPegmanMultiZoneDrag() {
   });
   
   function finalizeDrop(clientX, clientY) {
-    if (appState.isDraggingPegman && appState.viaRequerida && appState.hoveredVia !== appState.viaRequerida) {
+    if (!appState.isDraggingPegman) return;
+
+    let selectedZonesList = Array.from(appState.draggedZonesSet);
+    const dropTarget = selectedZonesList.length === 0
+      ? resolveDragTarget(getSvgPoint(clientX, clientY))
+      : null;
+    const via = dropTarget?.targetVia || appState.hoveredVia || 'V2';
+
+    if (appState.viaRequerida && via !== appState.viaRequerida) {
       playSound('forbidden');
       showToast(`Primero coloca la ${appState.viaRequerida === 'V1' ? 'Vía 1' : 'Vía 2'}. Después se pedirá la otra.`, 'warning');
       return;
     }
     ghost.style.display = 'none';
-    
-    if (!appState.isDraggingPegman) return;
-    
-    const via = appState.hoveredVia || 'V2';
-    let selectedZonesList = Array.from(appState.draggedZonesSet);
-    
-    if (selectedZonesList.length === 0) {
-      // Si el operador no colocó tramos con clic derecho, se toma el cantón único sobre el que soltó el cursor
-      const svgPoint = getSvgPoint(clientX, clientY);
-      const isInsideRailArea = svgPoint.x >= 40 && svgPoint.x <= 3520 && svgPoint.y >= 40 && svgPoint.y <= 480;
-      const hitZone = ZONAS_VIA.find(z => svgPoint.x >= z.xStart && svgPoint.x <= z.xEnd);
-      if (hitZone && isInsideRailArea) {
-        selectedZonesList = [hitZone.id];
+
+    if (dropTarget) {
+      if (dropTarget.hitZone && dropTarget.insideRailArea) {
+        selectedZonesList = [dropTarget.hitZone.id];
       } else {
         clearForbidden();
         clearDragSelectionSpan();
@@ -373,11 +376,15 @@ function initPegmanMultiZoneDrag() {
     
     if (appState.draggedType === 'crew') {
       const crewCount = appState.crews.length + 1;
+      const visualModelIndex = nextCrewVisualModelIndex(appState.crews);
+      const workProfile = getCrewVisualProfile(visualModelIndex);
       const newCrew = {
         id: `CRW-${Date.now().toString().slice(-4)}`,
         type: 'crew',
+        visualModelIndex,
+        taskLabel: workProfile.shortTask,
         responsible: `Cuadrilla #${crewCount}`,
-        company: 'Mantenimiento de Vía',
+        company: workProfile.company,
         count: 4,
         radio: `Ch-02 / R${100 + crewCount}`,
         via: via,
@@ -390,11 +397,11 @@ function initPegmanMultiZoneDrag() {
         dir: 1,
         isWorking: false,
         inSafeZone: false,
-        workTimer: 0,
-        workCountdown: 6 + Math.random() * 4,
+        workTimer: workProfile.workSeconds,
+        workCountdown: workProfile.walkSeconds,
         timeIn: curTime,
         timeOut: '',
-        notes: 'Inspección y conservación de vía'
+        notes: workProfile.notes
       };
       
       appState.crews.push(newCrew);
@@ -404,17 +411,22 @@ function initPegmanMultiZoneDrag() {
         detail: `Cuadrilla ${newCrew.responsible} autorizada en ${newCrew.zoneLabel} (${via}).`
       });
       
-      showToast(`👷 ${newCrew.responsible} en vía. Haz clic sobre ella o en Editar para ajustar datos o poner en Zona Segura.`, 'success');
+      showToast(`👷 ${newCrew.responsible}: ${workProfile.role}. Haz clic o edita para ajustar la tarea o poner en Zona Segura.`, 'success');
       
     } else if (appState.draggedType === 'vehicle') {
       const vehCount = appState.vehicles.length + 1;
+      const visualModelIndex = nextVehicleVisualModelIndex(appState.vehicles);
+      const vehicleProfile = getVehicleVisualProfile(visualModelIndex);
+      const unitCode = `D-${String(vehCount).padStart(2, '0')}`;
       const newVehicle = {
         id: `VEH-${Date.now().toString().slice(-4)}`,
         type: 'vehicle',
-        vehicleType: `Dresina D-0${Math.min(vehCount, 9)}`,
+        visualModelIndex,
+        shortLabel: `${vehicleProfile.shortLabel} ${unitCode}`,
+        vehicleType: `${vehicleProfile.vehicleType} ${unitCode}`,
         driver: `Operador ${vehCount}`,
         leader: `Resp. Maniobra`,
-        company: 'Vía y Catenaria',
+        company: vehicleProfile.company,
         radio: `Ch-01 / Tráfico`,
         via: via,
         zones: sortedZones.map(z => z.id),
@@ -422,11 +434,11 @@ function initPegmanMultiZoneDrag() {
         xMin: xMin,
         xMax: xMax,
         x: centerX,
-        speed: 28,
+        speed: vehicleProfile.speed,
         dir: 1,
         timeIn: curTime,
         timeOut: '',
-        notes: 'Maniobra de auscultación y catenaria'
+        notes: vehicleProfile.notes
       };
       
       appState.vehicles.push(newVehicle);
@@ -436,7 +448,7 @@ function initPegmanMultiZoneDrag() {
         detail: `Vehículo ${newVehicle.vehicleType} en maniobra sobre ${newVehicle.zoneLabel} (${via}).`
       });
       
-      showToast(`🚜 ${newVehicle.vehicleType} en vía. Toca para editar o concluir.`, 'success');
+      showToast(`🚜 ${vehicleProfile.role} ${unitCode} en vía. Toca para editar o concluir.`, 'success');
     }
     
     appState.isDraggingPegman = false;
@@ -642,8 +654,8 @@ function initQuickEditCard() {
       appState.draggedType = token.type;
       appState.hoveredVia = token.via;
       appState.draggedZonesSet.clear();
-      token.zones.forEach(zid => appState.draggedZonesSet.add(zid));
-      appState.hasPaintedMultiZones = token.zones.length > 1;
+      appState.dragCandidateZoneId = null;
+      appState.hasPaintedMultiZones = false;
       
       const ghost = document.getElementById('pegman-drag-ghost');
       const ghostEmoji = document.getElementById('ghost-emoji');
@@ -854,6 +866,7 @@ function startReassigningToken(entity, clientX, clientY, continuandoCola) {
   appState.draggedType = entity.type;
   appState.hoveredVia = entity.via;
   appState.draggedZonesSet.clear();
+  appState.dragCandidateZoneId = null;
   appState.hasPaintedMultiZones = false;
   appState.isPaintingWithRightClick = false;
   appState.isCurrentHoverForbidden = false;

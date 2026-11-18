@@ -173,7 +173,13 @@ function initPanZoomControls() {
   }, { passive: false });
   
   container.addEventListener('mousedown', (e) => {
-    if (appState.isDraggingPegman || e.target.closest('.modal-overlay') || e.target.closest('.action-btn')) return;
+    const target = e.target instanceof Element ? e.target : null;
+    if (appState.isDraggingPegman || target?.closest('.crew-token, .vehicle-token')) {
+      appState.isPanning = false;
+      appState.startPan = null;
+      return;
+    }
+    if (target?.closest('.modal-overlay, .action-btn')) return;
     if (e.button === 0) {
       appState.isPanning = true;
       appState.startPan = { x: e.clientX, y: e.clientY };
@@ -181,7 +187,7 @@ function initPanZoomControls() {
   });
   
   window.addEventListener('mousemove', (e) => {
-    if (!appState.isPanning) return;
+    if (!appState.isPanning || appState.isDraggingPegman) return;
     const dx = (e.clientX - appState.startPan.x) * (appState.viewBox.width / container.clientWidth);
     const dy = (e.clientY - appState.startPan.y) * (appState.viewBox.height / container.clientHeight);
     appState.viewBox.x -= dx;
@@ -358,7 +364,10 @@ function renderEntitiesDOM() {
     g.setAttribute("id", `token-${crew.id}`);
     g.setAttribute("transform", `translate(${xCrew}, ${yPos})`);
     g.setAttribute("data-id", crew.id);
-    
+
+    const crewModelIdx = getCrewModel(crew).index;
+    const crewSpriteHtml = renderCrewSpritePilot(crew);
+
     g.innerHTML = `
       <rect class="token-hitbox" x="-30" y="-40" width="60" height="60" fill="transparent" style="pointer-events:all; cursor:pointer;" />
       ${colorGrupoPermiso(crew) ? `<ellipse cx="0" cy="15" rx="22" ry="5.5" fill="none" stroke="${colorGrupoPermiso(crew)}" stroke-width="2.2" stroke-dasharray="6 3" style="pointer-events:none;" />` : ''}
@@ -389,20 +398,24 @@ function renderEntitiesDOM() {
       </g>
 
       <!-- Visual de Cuadrilla Diferenciada (10 Modelos Únicos con Atuendos y Equipos Reales) -->
-      <g class="crew-visual" style="pointer-events:none;">
-        ${renderCrewVisualModel(crew, (parseInt((crew.id || '').replace(/\D/g, ''), 10) || 0))}
+      <g class="crew-visual crew-model-${crewModelIdx} ${crewSpriteHtml ? 'sprite-pilot-active' : ''}" transform="translate(0, -15) scale(1.55) translate(0, 15)" style="pointer-events:none;">
+        <g class="crew-svg-fallback" style="pointer-events:none;">
+          ${renderCrewVisualModel(crew, crewModelIdx)}
+        </g>
+        ${crewSpriteHtml || ''}
+        ${crewSpriteHtml ? renderCrewRoleAccessory(crew, crewModelIdx) : ''}
       </g>
 
       <!-- Globo de Emote Retro / Acción Especial de Videojuego -->
-      <g class="crew-retro-bubble" id="retro-bubble-${crew.id}" style="display:none; pointer-events:none;" transform="translate(0, -60)">
+      <g class="crew-retro-bubble" id="retro-bubble-${crew.id}" style="display:none; pointer-events:none;" transform="translate(0, -82)">
         <path d="M -26,-22 L 26,-22 Q 30,-22 30,-18 L 30,6 Q 30,10 26,10 L 4,10 L 0,16 L -4,10 L -26,10 Q -30,10 -30,6 L -30,-18 Q -30,-22 -26,-22 Z" fill="#090d16" stroke="#f59e0b" stroke-width="1.8" />
         <g class="bubble-content-slot" id="bubble-slot-${crew.id}"></g>
       </g>
 
       <!-- Cartela con Datos y Estado -->
-      <rect x="-72" y="-38" width="144" height="18" rx="4" fill="#070d17" fill-opacity="0.94" stroke="${crew.inSafeZone ? "#10b981" : "#f59e0b"}" stroke-width="1.4" style="pointer-events:none;" />
-      ${colorGrupoPermiso(crew) ? `<rect x="-72" y="-38" width="6" height="18" rx="2" fill="${colorGrupoPermiso(crew)}" style="pointer-events:none;" />` : ''}
-      <text class="crew-status-label" x="0" y="-25" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle" style="pointer-events:none;">
+      <rect x="-72" y="-58" width="144" height="18" rx="4" fill="#070d17" fill-opacity="0.94" stroke="${crew.inSafeZone ? "#10b981" : "#f59e0b"}" stroke-width="1.4" style="pointer-events:none;" />
+      ${colorGrupoPermiso(crew) ? `<rect x="-72" y="-58" width="6" height="18" rx="2" fill="${colorGrupoPermiso(crew)}" style="pointer-events:none;" />` : ''}
+      <text class="crew-status-label" x="0" y="-45" fill="#ffffff" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle" style="pointer-events:none;">
         ${crew.inSafeZone ? "🛡️ " + crew.responsible.slice(0, 11) + " [Andén]" : "👷 " + crew.responsible.slice(0, 11) + " (" + (crew.count || "?") + "p)"}
       </text>
     `;
@@ -422,12 +435,14 @@ function renderEntitiesDOM() {
           
           appState.reassigningEntity = crew;
           appState.isDraggingPegman = true;
+          appState.isPanning = false;
+          appState.startPan = null;
           document.body.classList.add('is-dragging-token');
-          appState.draggedType = 'crew';
-          appState.hoveredVia = crew.via;
-          appState.draggedZonesSet.clear();
-          crew.zones.forEach(zid => appState.draggedZonesSet.add(zid));
-          appState.hasPaintedMultiZones = crew.zones.length > 1;
+           appState.draggedType = 'crew';
+           appState.hoveredVia = crew.via;
+           appState.draggedZonesSet.clear();
+           appState.dragCandidateZoneId = null;
+           appState.hasPaintedMultiZones = false;
           
           const ghost = document.getElementById("pegman-drag-ghost");
           const ghostEmoji = document.getElementById("ghost-emoji");
@@ -536,7 +551,14 @@ function renderEntitiesDOM() {
     g.setAttribute("id", `token-${veh.id}`);
     g.setAttribute("transform", `translate(${xVeh}, ${yPos})`);
     g.setAttribute("data-id", veh.id);
-    
+
+    const vehicleModel = getVehicleModel(veh);
+    const vehModelIdx = vehicleModel.index;
+    const unitCode = (veh.vehicleType.match(/D-\d+/i) || [])[0] || '';
+    const vehLabel = veh.shortLabel || `${vehicleModel.profile.shortLabel} ${unitCode}`.trim();
+    const vehSpriteHtml = renderVehicleSpritePilot(veh);
+    const vehLabelOffset = vehSpriteHtml ? -22 : 0;
+
     g.innerHTML = `
       <rect class="token-hitbox" x="-56" y="-40" width="120" height="60" fill="transparent" style="pointer-events:all; cursor:pointer;" />
       <!-- Sombra de contacto ferroviaria (Grounded Track Shadow) -->
@@ -549,14 +571,18 @@ function renderEntitiesDOM() {
       <polygon class="headlight-beam" points="48,-2 135,-20 135,14" fill="url(#headlight-beam-east)" opacity="0.75" style="pointer-events:none;" />
       
       <!-- Carroceria y Morfologia de Vehículo Auxiliar (10 Modelos Distintos de Dresina) -->
-      <g class="veh-visual veh-chug-vibe" style="pointer-events:none;">
-        ${renderVehicleVisualModel(veh, (parseInt((veh.id || '').replace(/\D/g, ''), 10) || 0))}
+      <g class="veh-visual veh-model-${vehModelIdx} veh-chug-vibe ${vehSpriteHtml ? 'sprite-pilot-active' : ''}" style="pointer-events:none;">
+        <g class="veh-svg-fallback" style="pointer-events:none;">
+          ${renderVehicleVisualModel(veh, vehModelIdx)}
+        </g>
+        ${vehSpriteHtml || ''}
+        ${vehSpriteHtml ? renderVehicleRoleAccessory(veh, vehModelIdx) : ''}
       </g>
       
       <!-- Cartela informativa de vehiculo -->
-      <rect x="-70" y="-36" width="140" height="17" rx="3.5" fill="#0a121e" stroke="#38bdf8" stroke-width="1.3" style="pointer-events:none;" />
-      <text class="veh-status-label" x="0" y="-24" fill="#38bdf8" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle" style="pointer-events:none;">
-        🚜 ${veh.vehicleType.slice(0, 16)}
+      <rect x="-70" y="${-36 + vehLabelOffset}" width="140" height="17" rx="3.5" fill="#0a121e" stroke="#38bdf8" stroke-width="1.3" style="pointer-events:none;" />
+      <text class="veh-status-label" x="0" y="${-24 + vehLabelOffset}" fill="#38bdf8" font-size="9" font-weight="bold" font-family="monospace" text-anchor="middle" style="pointer-events:none;">
+        🚜 ${vehLabel.slice(0, 16)}
       </text>
     `;
     
@@ -575,12 +601,14 @@ function renderEntitiesDOM() {
           
           appState.reassigningEntity = veh;
           appState.isDraggingPegman = true;
+          appState.isPanning = false;
+          appState.startPan = null;
           document.body.classList.add('is-dragging-token');
-          appState.draggedType = 'vehicle';
-          appState.hoveredVia = veh.via;
-          appState.draggedZonesSet.clear();
-          veh.zones.forEach(zid => appState.draggedZonesSet.add(zid));
-          appState.hasPaintedMultiZones = veh.zones.length > 1;
+           appState.draggedType = 'vehicle';
+           appState.hoveredVia = veh.via;
+           appState.draggedZonesSet.clear();
+           appState.dragCandidateZoneId = null;
+           appState.hasPaintedMultiZones = false;
           
           const ghost = document.getElementById("pegman-drag-ghost");
           const ghostEmoji = document.getElementById("ghost-emoji");
@@ -675,6 +703,11 @@ function initCatenaryControl() {
     btnToggleMode.addEventListener('click', () => {
       appState.catenary.interactiveMode = !appState.catenary.interactiveMode;
       btnToggleMode.classList.toggle('active', appState.catenary.interactiveMode);
+      const pointerMode = appState.catenary.interactiveMode ? 'stroke' : 'none';
+      document.querySelectorAll('#catenary-layer .catenary-plasma-stream, #catenary-layer .catenary-cut-line').forEach(line => {
+        line.style.pointerEvents = pointerMode;
+        line.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+      });
       playSound('jump');
       if (appState.catenary.interactiveMode) {
         showToast('🔌 Modo selector activo: Haz clic directamente sobre cualquier tramo en la vía para cortar o energizar 1500V.', 'info');
@@ -770,9 +803,10 @@ function renderCatenaryLayer() {
       lineCut.setAttribute('x1', zone.xStart);
       lineCut.setAttribute('y1', zone.y);
       lineCut.setAttribute('x2', zone.xEnd);
-      lineCut.setAttribute('y2', zone.y);
-      lineCut.setAttribute('class', 'catenary-cut-line');
-      lineCut.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+       lineCut.setAttribute('y2', zone.y);
+       lineCut.setAttribute('class', 'catenary-cut-line');
+       lineCut.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+       lineCut.style.pointerEvents = appState.catenary.interactiveMode ? 'stroke' : 'none';
       lineCut.setAttribute('title', `${zone.name} [0V CORTE DE TENSIÓN]. Clic para alternar.`);
       lineCut.addEventListener('click', clickHandler);
       gZone.appendChild(lineCut);
@@ -791,18 +825,20 @@ function renderCatenaryLayer() {
 
       if (zone.hasD1) {
         const pathD1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        pathD1.setAttribute('d', 'M 2920,216 L 3010,18');
-        pathD1.setAttribute('class', 'catenary-cut-line');
-        pathD1.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+         pathD1.setAttribute('d', 'M 2920,216 L 3010,18');
+         pathD1.setAttribute('class', 'catenary-cut-line');
+         pathD1.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+         pathD1.style.pointerEvents = appState.catenary.interactiveMode ? 'stroke' : 'none';
         pathD1.setAttribute('title', `D1 hacia PTSA [0V CORTE]. Clic para alternar.`);
         pathD1.addEventListener('click', clickHandler);
         gZone.appendChild(pathD1);
       }
       if (zone.hasD2) {
         const pathD2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        pathD2.setAttribute('d', 'M 3440,216 L 3340,18');
-        pathD2.setAttribute('class', 'catenary-cut-line');
-        pathD2.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+         pathD2.setAttribute('d', 'M 3440,216 L 3340,18');
+         pathD2.setAttribute('class', 'catenary-cut-line');
+         pathD2.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+         pathD2.style.pointerEvents = appState.catenary.interactiveMode ? 'stroke' : 'none';
         pathD2.setAttribute('title', `D2 hacia PTSA [0V CORTE]. Clic para alternar.`);
         pathD2.addEventListener('click', clickHandler);
         gZone.appendChild(pathD2);
@@ -824,8 +860,9 @@ function renderCatenaryLayer() {
       plasma.setAttribute('y1', zone.y);
       plasma.setAttribute('x2', zone.xEnd);
       plasma.setAttribute('y2', zone.y);
-      plasma.setAttribute('class', 'catenary-plasma-stream');
-      plasma.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+       plasma.setAttribute('class', 'catenary-plasma-stream');
+       plasma.style.cursor = appState.catenary.interactiveMode ? 'pointer' : 'default';
+       plasma.style.pointerEvents = appState.catenary.interactiveMode ? 'stroke' : 'none';
       plasma.setAttribute('title', `${zone.name} [1500V DC ENERGIZADO]. Clic para alternar.`);
       plasma.addEventListener('click', clickHandler);
       gZone.appendChild(plasma);
@@ -846,8 +883,10 @@ function renderCatenaryLayer() {
           <path d="M 2920,216 L 3010,18" class="catenary-corona-arc" />
           <path d="M 2920,216 L 3010,18" class="catenary-plasma-stream" style="cursor:${appState.catenary.interactiveMode ? 'pointer' : 'default'};" />
           <path d="M 2920,216 L 3010,18" class="catenary-lightning-core" />
-        `;
-        d1Group.querySelector('.catenary-plasma-stream').addEventListener('click', clickHandler);
+         `;
+        const d1Plasma = d1Group.querySelector('.catenary-plasma-stream');
+        d1Plasma.style.pointerEvents = appState.catenary.interactiveMode ? 'stroke' : 'none';
+        d1Plasma.addEventListener('click', clickHandler);
         gZone.appendChild(d1Group);
       }
 
@@ -857,8 +896,10 @@ function renderCatenaryLayer() {
           <path d="M 3440,216 L 3340,18" class="catenary-corona-arc" />
           <path d="M 3440,216 L 3340,18" class="catenary-plasma-stream" style="cursor:${appState.catenary.interactiveMode ? 'pointer' : 'default'};" />
           <path d="M 3440,216 L 3340,18" class="catenary-lightning-core" />
-        `;
-        d2Group.querySelector('.catenary-plasma-stream').addEventListener('click', clickHandler);
+         `;
+        const d2Plasma = d2Group.querySelector('.catenary-plasma-stream');
+        d2Plasma.style.pointerEvents = appState.catenary.interactiveMode ? 'stroke' : 'none';
+        d2Plasma.addEventListener('click', clickHandler);
         gZone.appendChild(d2Group);
       }
     }

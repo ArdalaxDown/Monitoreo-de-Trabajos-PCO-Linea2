@@ -1,0 +1,157 @@
+{
+  "schema": "ats-vp-sprite-pilot/v1",
+  "status": "pilot-integrated-in-2d-svg-runtime",
+  "camera": "orthographic side/three-quarter; transparent background",
+  "assets": {
+    "crew_m0": {
+      "file": "crew-m0-atlas.png",
+      "format": "png-rgba",
+      "cell": {
+        "width": 128,
+        "height": 128
+      },
+      "grid": {
+        "columns": 5,
+        "rows": 4
+      },
+      "content_bounds_px": [
+        46,
+        8,
+        91,
+        104
+      ],
+      "anchor_px": {
+        "x": 64,
+        "y": 104
+      },
+      "states": {
+        "walk": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 12,
+          "loop": true
+        },
+        "work": {
+          "frames": [
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "fps": 12,
+          "loop": true
+        },
+        "safe": {
+          "frames": [
+            16,
+            17,
+            18,
+            19
+          ],
+          "fps": 6,
+          "loop": false
+        }
+      },
+      "bytes": 92069
+    },
+    "vehicle_v0": {
+      "file": "vehicle-v0-atlas.png",
+      "format": "png-rgba",
+      "cell": {
+        "width": 256,
+        "height": 160
+      },
+      "grid": {
+        "columns": 4,
+        "rows": 3
+      },
+      "content_bounds_px": [
+        31,
+        2,
+        234,
+        154
+      ],
+      "anchor_px": {
+        "x": 128,
+        "y": 154
+      },
+      "states": {
+        "drive": {
+          "frames": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "fps": 12,
+          "loop": true
+        },
+        "idle": {
+          "frames": [
+            8,
+            9
+          ],
+          "fps": 6,
+          "loop": false
+        },
+        "turn": {
+          "frames": [
+            10,
+            11
+          ],
+          "fps": 8,
+          "loop": true
+        }
+      },
+      "bytes": 410908
+    }
+  },
+  "variants": {
+    "crew_m": [
+      "crew-m0-atlas.png",
+      "crew-m1-atlas.png",
+      "crew-m2-atlas.png",
+      "crew-m3-atlas.png",
+      "crew-m4-atlas.png",
+      "crew-m5-atlas.png",
+      "crew-m6-atlas.png",
+      "crew-m7-atlas.png",
+      "crew-m8-atlas.png",
+      "crew-m9-atlas.png"
+    ],
+    "vehicle_v": [
+      "vehicle-v0-atlas.png",
+      "vehicle-v1-atlas.png",
+      "vehicle-v2-atlas.png",
+      "vehicle-v3-atlas.png",
+      "vehicle-v4-atlas.png",
+      "vehicle-v5-atlas.png",
+      "vehicle-v6-atlas.png",
+      "vehicle-v7-atlas.png",
+      "vehicle-v8-atlas.png",
+      "vehicle-v9-atlas.png"
+    ]
+  },
+  "notes": [
+    "M0/V0 base models and animation atlases were rendered in Blender 5.3; role colorways preserve their frame layouts.",
+    "All 10 role variants use the Blender sprite style; SVG work-equipment overlays add discipline-specific tools.",
+    "PNG RGBA is used for broad browser compatibility; procedural SVG is a last-resort fallback if an atlas cannot load.",
+    "Atlas coordinates are top-left-origin."
+  ]
+}

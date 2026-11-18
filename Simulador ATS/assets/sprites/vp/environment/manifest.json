@@ -1,0 +1,52 @@
+{
+  "schema": "ats-vp-environment/v1",
+  "renderer": "Blender 5.3",
+  "source_blend": "../../../blender/ats-vp-environment.blend",
+  "coordinate_system": "Transparent orthographic renders mapped to VP SVG user units",
+  "assets": {
+    "track_module": {
+      "file": "track-module.png",
+      "format": "png-rgba",
+      "pixels": [640, 120],
+      "map_tile": [160, 30],
+      "scene": "ATS_VP_TrackTile",
+      "use": "Repeating static ballast, sleepers and metal rails beneath main-line and diagonal ATS SVG routes"
+    },
+    "platform_module": {
+      "file": "platform-module.png",
+      "format": "png-rgba",
+      "pixels": [800, 168],
+      "map_size": [200, 42],
+      "scene": "ATS_VP_Platform",
+      "use": "Raised platform deck with modular panels, canopies and benches"
+    },
+    "station_sign": {
+      "file": "station-sign-module.png",
+      "format": "png-rgba",
+      "pixels": [800, 168],
+      "map_size": [200, 42],
+      "scene": "ATS_VP_StationSign",
+      "use": "Blank cyan-metal station sign backing; dynamic station names remain SVG text"
+    },
+    "pv_header": {
+      "file": "pv-header-static.png",
+      "format": "png-rgba",
+      "pixels": [360, 192],
+      "map_size": [90, 48],
+      "scene": "ATS_VP_PVHeader",
+      "use": "Static industrial PV housing; PV identifier remains SVG text"
+    },
+    "pv_rotor": {
+      "file": "pv-rotor.png",
+      "format": "png-rgba",
+      "pixels": [128, 128],
+      "map_size": [28, 28],
+      "scene": "ATS_VP_PVHeader",
+      "animation": "A Blender-keyframed five-blade rotor rendered as a 2D sprite and rotated smoothly by CSS; stopped by prefers-reduced-motion"
+    }
+  },
+  "safety": {
+    "interactive_topology": "SVG remains authoritative for track, crossings, work spans, signals and 1500V/0V status",
+    "sprites": "Decorative and pointer-events-none; no operational state is encoded in the Blender renders"
+  }
+}

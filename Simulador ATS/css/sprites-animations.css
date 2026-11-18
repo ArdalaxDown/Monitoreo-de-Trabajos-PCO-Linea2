@@ -213,15 +213,13 @@
   100% { opacity: 1; filter: drop-shadow(0 0 16px #ef4444); }
 }
 
-/* Ruedas giratorias de acero del vehículo auxiliar */
+/* Ruedas giratorias de acero del vehículo auxiliar:
+   SIN animation CSS. El giro lo escribe tick() (animation-engine.js) en el
+   atributo transform según la distancia recorrida, y se congela cuando
+   blend <= 0.02 (vehículo detenido). Una animation aquí pisaría el atributo
+   y las ruedas girarían incluso paradas. */
 .veh-wheel-spoke {
   transform-origin: center;
-  animation: wheelRotate 0.4s linear infinite;
-}
-
-@keyframes wheelRotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 /* Humo de escape diesel animado (Aros que ascienden y se disipan) */
@@ -339,7 +337,7 @@
   .veh-visual .crew-work-sparks,
   .veh-exhaust-flapper,
   .vehicle-work-indicator {
-    animation: none;
+    animation: none !important;
   }
 }
 
@@ -363,6 +361,129 @@
   0% { transform: translate(0, 0) rotate(0deg); }
   50% { transform: translate(1px, 2px) rotate(4deg); }
   100% { transform: translate(-0.5px, -1px) rotate(-2deg); }
+}
+
+/* Herramienta de faena por especialidad. Cada variante usa un gesto distinto. */
+#track-svg .crew-role-accessory.crew-tamper-tool:not(.is-working) {
+  animation: none;
+}
+
+#track-svg .crew-role-accessory:not(.is-working) .crew-work-sparks {
+  display: none;
+  animation: none;
+}
+
+#track-svg .crew-tool-tamping.is-working {
+  transform-origin: 3px -4px;
+  animation: crewToolTamping 0.42s ease-in-out infinite;
+}
+#track-svg .crew-tool-radio.is-working {
+  transform-origin: 5px -3px;
+  animation: crewToolRadioCheck 1.8s ease-in-out infinite;
+}
+#track-svg .crew-tool-welding.is-working {
+  transform-origin: 0 2px;
+  animation: crewToolWelding 0.62s ease-in-out infinite;
+}
+#track-svg .crew-tool-ultrasonic.is-working {
+  transform-origin: 2px 3px;
+  animation: crewToolUltrasonic 1.25s ease-in-out infinite;
+}
+#track-svg .crew-tool-catenary.is-working {
+  transform-origin: 3px -5px;
+  animation: crewToolCatenary 2.1s ease-in-out infinite;
+}
+#track-svg .crew-tool-switch.is-working {
+  transform-origin: 1px 2px;
+  animation: crewToolSwitch 0.58s ease-in-out infinite;
+}
+#track-svg .crew-tool-survey.is-working {
+  transform-origin: 0 1px;
+  animation: crewToolSurvey 1.5s ease-in-out infinite;
+}
+#track-svg .crew-tool-fiber.is-working {
+  transform-origin: 3px 1px;
+  animation: crewToolFiber 1.35s ease-in-out infinite;
+}
+#track-svg .crew-tool-cutting.is-working {
+  transform-origin: 5px 3px;
+  animation: crewToolCutting 0.16s linear infinite;
+}
+#track-svg .crew-tool-flagman.is-working {
+  transform-origin: 1px 1px;
+  animation: crewToolFlagman 1.9s ease-in-out infinite;
+}
+
+@keyframes crewToolTamping {
+  0%, 100% { transform: translate(0, 0) rotate(-2deg); }
+  50% { transform: translate(1px, 2px) rotate(5deg); }
+}
+@keyframes crewToolRadioCheck {
+  0%, 70%, 100% { transform: rotate(0deg); }
+  82% { transform: rotate(-8deg); }
+  92% { transform: rotate(3deg); }
+}
+@keyframes crewToolWelding {
+  0%, 100% { transform: translate(0, 0) rotate(1deg); }
+  50% { transform: translate(1px, 1px) rotate(-2deg); }
+}
+@keyframes crewToolUltrasonic {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(5deg); }
+}
+@keyframes crewToolCatenary {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(3deg); }
+}
+@keyframes crewToolSwitch {
+  0%, 100% { transform: rotate(-6deg); }
+  50% { transform: rotate(8deg); }
+}
+@keyframes crewToolSurvey {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+@keyframes crewToolFiber {
+  0%, 100% { transform: rotate(-3deg); }
+  50% { transform: rotate(4deg); }
+}
+@keyframes crewToolCutting {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-0.7px, 0.8px); }
+}
+@keyframes crewToolFlagman {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(7deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #track-svg .crew-tool-tamping,
+  #track-svg .crew-tool-radio,
+  #track-svg .crew-tool-welding,
+  #track-svg .crew-tool-ultrasonic,
+  #track-svg .crew-tool-catenary,
+  #track-svg .crew-tool-switch,
+  #track-svg .crew-tool-survey,
+  #track-svg .crew-tool-fiber,
+  #track-svg .crew-tool-cutting,
+  #track-svg .crew-tool-flagman,
+  #track-svg .weld-spark-cascade,
+  #track-svg .saw-spark-spray,
+  #track-svg .surveyor-laser-beam,
+  #track-svg .ultrasonic-radar-beam,
+  #track-svg .vehicle-token .beacon-strobe-a,
+  #track-svg .vehicle-token .beacon-strobe-b,
+  #track-svg .vehicle-token .veh-exhaust-flapper,
+  #track-svg .vehicle-token .veh-crane-load-sway,
+  #track-svg .vehicle-token .veh-scissor-lift-group,
+  #track-svg .vehicle-token .veh-rescue-strobe-red,
+  #track-svg .vehicle-token .veh-rescue-strobe-blue,
+  #track-svg .vehicle-token .ultrasonic-radar-beam,
+  #track-svg .vehicle-token .crew-work-sparks,
+  #track-svg .veh-wash-spray,
+  #track-svg .veh-role-crane {
+    animation: none !important;
+  }
 }
 
 /* Estrellas y Chispas de Trabajo sobre el Riel:
@@ -580,6 +701,29 @@
 @keyframes rescueStrobeBlue {
   0%, 100% { opacity: 0.2; }
   50%      { opacity: 1; filter: drop-shadow(0 0 8px #3b82f6); }
+}
+
+/* Accesorios prerenderizados sobre dresinas Blender: lavado y brazo grúa */
+#track-svg .veh-wash-spray {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: vehWashSpray 0.85s ease-in-out infinite alternate;
+}
+
+@keyframes vehWashSpray {
+  from { opacity: 0.3; transform: translateX(0) scaleX(0.72); }
+  to { opacity: 0.86; transform: translateX(2px) scaleX(1.08); }
+}
+
+#track-svg .veh-role-crane {
+  transform-box: fill-box;
+  transform-origin: 12% 55%;
+  animation: vehRoleCrane 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes vehRoleCrane {
+  from { transform: rotate(-2deg); }
+  to { transform: rotate(3deg); }
 }
 
 @keyframes secretFlash {
@@ -831,5 +975,36 @@ body.is-dragging-token #easter-hotspots-layer {
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
+  }
+}
+
+/* ==========================================================================
+   SPRITE PILOT — Integración híbrida Blender→atlas PNG (modelos índice 0 VP)
+   ========================================================================== */
+.crew-sprite-svg,
+.veh-sprite-svg {
+  overflow: hidden;
+  pointer-events: none;
+  display: none;
+}
+
+.crew-visual.sprite-pilot-active .crew-sprite-svg,
+.veh-visual.sprite-pilot-active .veh-sprite-svg {
+  display: block;
+}
+
+.crew-visual.sprite-pilot-active .crew-svg-fallback,
+.veh-visual.sprite-pilot-active .veh-svg-fallback {
+  display: none;
+}
+
+.crew-sparks-overlay {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crew-sprite-svg,
+  .veh-sprite-svg {
+    animation: none;
   }
 }
