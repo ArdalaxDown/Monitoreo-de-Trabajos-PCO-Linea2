@@ -21,11 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initEasterEggs();
   initTokenContextMenu();
   
+  document.getElementById('vp-context-clear')
+    .addEventListener('click', () => seleccionarTrabajoVP(null));
   loadPersistedState();
   renderAll();
   initAnimationEngine();
-  
-  showToast('🎮 Simulador ATS L2: Escala semántica y Sala Arcade / Huevos de Pascua activados.', 'success');
+
 });
 
 function initClock() {
@@ -372,9 +373,9 @@ window.focusEntityOnMap = function(entityId) {
   else if (veh) targetX = veh.x;
   
   if (targetX !== null) {
+    seleccionarTrabajoVP(entityId);
     smoothGlideToX(targetX);
     playSound('coin');
-    showToast(`Centrado en elemento ${entityId}`, 'info');
   }
 };
 
@@ -919,9 +920,11 @@ function toggleZoneCatenary(zoneId) {
 // ------------------------------------------------------------------------------
 function persistState() {
   try {
+    actualizarVariantesSprite();
     const payload = {
       crews: appState.crews,
       vehicles: appState.vehicles,
+      spriteVariants: [...spriteVariantsByIdentity],
       completedJobs: appState.completedJobs,
       historyLog: appState.historyLog,
       switchesState: appState.switchesState,
@@ -1167,6 +1170,7 @@ function loadPersistedState() {
     const raw = localStorage.getItem(appState.STORAGE_KEY);
     if (raw) {
       const data = JSON.parse(raw);
+      cargarVariantesSprite(data.spriteVariants);
       if (Array.isArray(data.crews)) appState.crews = data.crews;
       if (Array.isArray(data.vehicles)) appState.vehicles = data.vehicles;
       if (Array.isArray(data.completedJobs)) appState.completedJobs = data.completedJobs;

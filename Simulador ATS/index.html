@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Simulador ATS — Monitoreo de Trabajos en Vía Principal | OCIR Línea 2</title>
   <link rel="stylesheet" href="css/base.css?v=20261114_01">
-  <link rel="stylesheet" href="css/track-svg.css?v=20261117_01">
+  <link rel="stylesheet" href="css/track-svg.css?v=20261124_01">
   <link rel="stylesheet" href="css/sprites-animations.css?v=20261117_07">
   <link rel="stylesheet" href="css/modals-dock.css?v=20261114_01">
 
 </head>
-<body>
+<body class="vp-page">
 
   <!-- ==========================================================================
        1. CABECERA PRINCIPAL (HEADER SISTEMA ATS)
@@ -789,6 +789,15 @@
       </svg>
     </div>
 
+    <section id="vp-context" aria-label="Contexto del plano">
+      <div class="vp-context-copy" aria-live="polite">
+        <strong id="vp-context-title">Vía principal</strong>
+        <span id="vp-context-route" hidden></span>
+        <span id="vp-context-status"></span>
+      </div>
+      <button type="button" id="vp-context-clear" aria-label="Quitar selección" hidden>×</button>
+    </section>
+
     <!-- Controles Flotantes de Paneo y Zoom -->
     <div id="viewport-controls">
       <button class="vp-control-btn" id="btn-zoom-in" title="Acercar plano">+</button>
@@ -1320,11 +1329,11 @@
   <script src="js/vp/config-topology.js?v=20261114_01"></script>
   <script src="js/vp/safety-interlocking.js?v=20261114_01"></script>
   <script src="js/vp/audio-arcade.js?v=20261114_02"></script>
-  <script src="js/vp/sprites-catalog.js?v=20261117_09"></script>
-  <script src="js/vp/render-map.js?v=20261117_04"></script>
-  <script src="js/vp/drag-interactions.js?v=20261117_04"></script>
+  <script src="js/vp/sprites-catalog.js?v=20261124_02"></script>
+  <script src="js/vp/render-map.js?v=20261124_01"></script>
+  <script src="js/vp/drag-interactions.js?v=20261124_01"></script>
   <script src="js/vp/animation-engine.js?v=20261117_07"></script>
-  <script src="js/vp/dock-reports.js?v=20261114_01"></script>
-  <script src="js/vp/importador-spco.js?v=20261114_01"></script>
+  <script src="js/vp/dock-reports.js?v=20261124_01"></script>
+  <script src="js/vp/importador-spco.js?v=20261118_03"></script>
 </body>
 </html>

@@ -153,5 +153,232 @@
     "All 10 role variants use the Blender sprite style; SVG work-equipment overlays add discipline-specific tools.",
     "PNG RGBA is used for broad browser compatibility; procedural SVG is a last-resort fallback if an atlas cannot load.",
     "Atlas coordinates are top-left-origin."
-  ]
+  ],
+  "preview": {
+    "source_blend": "../../../blender/ats-vp-familias.blend",
+    "source": "Geometría y animación originales del proyecto, elaboradas en Blender sobre los modelos aprobados.",
+    "technical_checks_passed": true,
+    "assets": {
+      "crew-m0-atlas.png": {
+        "file": "../familias/crew-m0-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          104,
+          107
+        ],
+        "bytes": 123654,
+        "bakedAccessories": false
+      },
+      "crew-m1-atlas.png": {
+        "file": "../familias/crew-m1-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          104,
+          107
+        ],
+        "bytes": 136609,
+        "bakedAccessories": true
+      },
+      "crew-m2-atlas.png": {
+        "file": "../familias/crew-m2-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          104,
+          107
+        ],
+        "bytes": 141266,
+        "bakedAccessories": true
+      },
+      "crew-m3-atlas.png": {
+        "file": "../familias/crew-m3-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          104,
+          107
+        ],
+        "bytes": 139096,
+        "bakedAccessories": true
+      },
+      "crew-m4-atlas.png": {
+        "file": "../familias/crew-m4-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          104,
+          107
+        ],
+        "bytes": 141773,
+        "bakedAccessories": true
+      },
+      "crew-m5-atlas.png": {
+        "file": "../familias/crew-m5-atlas.png",
+        "content_bounds_px": [
+          41,
+          16,
+          104,
+          107
+        ],
+        "bytes": 140867,
+        "bakedAccessories": true
+      },
+      "crew-m6-atlas.png": {
+        "file": "../familias/crew-m6-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          104,
+          107
+        ],
+        "bytes": 139182,
+        "bakedAccessories": true
+      },
+      "crew-m7-atlas.png": {
+        "file": "../familias/crew-m7-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          111,
+          107
+        ],
+        "bytes": 162253,
+        "bakedAccessories": true
+      },
+      "crew-m8-atlas.png": {
+        "file": "../familias/crew-m8-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          104,
+          107
+        ],
+        "bytes": 142013,
+        "bakedAccessories": true
+      },
+      "crew-m9-atlas.png": {
+        "file": "../familias/crew-m9-atlas.png",
+        "content_bounds_px": [
+          42,
+          16,
+          104,
+          107
+        ],
+        "bytes": 140292,
+        "bakedAccessories": true
+      },
+      "vehicle-v0-atlas.png": {
+        "file": "../familias/vehicle-v0-atlas.png",
+        "content_bounds_px": [
+          17,
+          20,
+          247,
+          154
+        ],
+        "bytes": 319067,
+        "bakedAccessories": false
+      },
+      "vehicle-v1-atlas.png": {
+        "file": "../familias/vehicle-v1-atlas.png",
+        "content_bounds_px": [
+          17,
+          20,
+          247,
+          154
+        ],
+        "bytes": 341663,
+        "bakedAccessories": true
+      },
+      "vehicle-v2-atlas.png": {
+        "file": "../familias/vehicle-v2-atlas.png",
+        "content_bounds_px": [
+          17,
+          11,
+          247,
+          154
+        ],
+        "bytes": 335661,
+        "bakedAccessories": true
+      },
+      "vehicle-v3-atlas.png": {
+        "file": "../familias/vehicle-v3-atlas.png",
+        "content_bounds_px": [
+          17,
+          8,
+          247,
+          154
+        ],
+        "bytes": 390608,
+        "bakedAccessories": true
+      },
+      "vehicle-v4-atlas.png": {
+        "file": "../familias/vehicle-v4-atlas.png",
+        "content_bounds_px": [
+          17,
+          20,
+          247,
+          154
+        ],
+        "bytes": 346043,
+        "bakedAccessories": true
+      },
+      "vehicle-v5-atlas.png": {
+        "file": "../familias/vehicle-v5-atlas.png",
+        "content_bounds_px": [
+          17,
+          20,
+          247,
+          154
+        ],
+        "bytes": 348024,
+        "bakedAccessories": true
+      },
+      "vehicle-v6-atlas.png": {
+        "file": "../familias/vehicle-v6-atlas.png",
+        "content_bounds_px": [
+          17,
+          20,
+          247,
+          154
+        ],
+        "bytes": 343703,
+        "bakedAccessories": true
+      },
+      "vehicle-v7-atlas.png": {
+        "file": "../familias/vehicle-v7-atlas.png",
+        "content_bounds_px": [
+          17,
+          20,
+          247,
+          154
+        ],
+        "bytes": 326200,
+        "bakedAccessories": true
+      },
+      "vehicle-v8-atlas.png": {
+        "file": "../familias/vehicle-v8-atlas.png",
+        "content_bounds_px": [
+          17,
+          20,
+          247,
+          154
+        ],
+        "bytes": 339356,
+        "bakedAccessories": true
+      },
+      "vehicle-v9-atlas.png": {
+        "file": "../familias/vehicle-v9-atlas.png",
+        "content_bounds_px": [
+          17,
+          13,
+          247,
+          154
+        ],
+        "bytes": 351696,
+        "bakedAccessories": true
+      }
+    }
+  }
 }

@@ -94,6 +94,95 @@ function getVehicleModel(veh) {
   return { id: num, index, profile: VEHICLE_VISUAL_PROFILES[index] };
 }
 
+// Las variantes identifican trabajos y unidades sin alterar sus perfiles de tarea.
+const spriteVariantsByIdentity = new Map();
+const SPRITE_VARIANT_COUNT = 10;
+
+function normalizarIdentidadVisual(valor) {
+  return String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .trim().replace(/\s+/g, ' ').toUpperCase();
+}
+
+function identificarVaf(texto) {
+  const comentario = normalizarIdentidadVisual(texto).split(/\bOBS\s*:/, 1)[0];
+  const unidades = new Set();
+  for (const match of comentario.matchAll(/\bVAF\s*(?:[-#]\s*)?(\d+)\b/g)) {
+    const previo = comentario.slice(0, match.index);
+    if (/\b(?:SIN|NO USA|NO UTILIZA|NO SE USA|NO SE UTILIZA)\s+$/.test(previo)) continue;
+    unidades.add(match[1].replace(/^0+(?=\d)/, ''));
+  }
+  return unidades.size === 1 ? `VAF ${unidades.values().next().value}` : '';
+}
+
+function claveIdentidadVisual(entity) {
+  if (entity.type === 'vehicle') {
+    // Los rótulos SPCO antiguos podían contener un número de fila o permiso.
+    const etiqueta = entity.unitCode ?? (
+      entity.id?.startsWith('VEH-SP') ? entity.notes : entity.vehicleType
+    );
+    const unidad = identificarVaf(etiqueta);
+    return unidad ? `vehicle|${unidad}` : '';
+  }
+  const permiso = normalizarIdentidadVisual(entity.ot);
+  const responsable = normalizarIdentidadVisual(entity.responsible);
+  if (!permiso || !responsable) return '';
+  const cuadrilla = normalizarIdentidadVisual(entity.crewName);
+  const empresa = normalizarIdentidadVisual(entity.company);
+  return `crew|${JSON.stringify([permiso, responsable, cuadrilla, empresa])}`;
+}
+
+function indiceVarianteSprite(valor) {
+  return Number.isInteger(valor) && valor >= 0 && valor < SPRITE_VARIANT_COUNT ? valor : null;
+}
+
+function asignarVariantesSprite(entities, getModel, type) {
+  const asignadas = new Set();
+  const reservadas = new Set();
+  for (const [key, index] of spriteVariantsByIdentity) {
+    if (key.startsWith(type + '|')) reservadas.add(index);
+  }
+  const pendientes = [];
+  for (const entity of entities) {
+    const key = claveIdentidadVisual(entity);
+    const guardada = spriteVariantsByIdentity.get(key);
+    if (guardada === undefined) {
+      pendientes.push({ entity, key });
+    } else {
+      entity.spriteVariantIndex = guardada;
+      asignadas.add(guardada);
+    }
+  }
+  for (const { entity, key } of pendientes) {
+    const preferida = indiceVarianteSprite(entity.spriteVariantIndex) ?? getModel(entity).index;
+    const paleta = Array.from({ length: SPRITE_VARIANT_COUNT }, (_, offset) =>
+      (preferida + offset) % SPRITE_VARIANT_COUNT);
+    const index = spriteVariantsByIdentity.get(key)
+      ?? paleta.find(i => !asignadas.has(i) && !reservadas.has(i))
+      ?? paleta.find(i => !asignadas.has(i))
+      ?? preferida;
+    entity.spriteVariantIndex = index;
+    asignadas.add(index);
+    if (key) spriteVariantsByIdentity.set(key, index);
+  }
+}
+
+function actualizarVariantesSprite() {
+  asignarVariantesSprite(appState.crews, getCrewModel, 'crew');
+  asignarVariantesSprite(appState.vehicles, getVehicleModel, 'vehicle');
+}
+
+function cargarVariantesSprite(data) {
+  spriteVariantsByIdentity.clear();
+  if (!Array.isArray(data)) return;
+  for (const item of data) {
+    if (!Array.isArray(item)) continue;
+    const [key, index] = item;
+    if (typeof key === 'string' && /^(crew|vehicle)\|/.test(key) && indiceVarianteSprite(index) !== null) {
+      spriteVariantsByIdentity.set(key, index);
+    }
+  }
+}
+
 function nextVisualModelIndex(entities, resolver) {
   const list = Array.isArray(entities) ? entities : [];
   const used = new Set(list.map(entity => resolver(entity).index));
@@ -735,11 +824,27 @@ window.SPRITE_PILOT = {
   prefReduced: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 };
 
+function cargarManifiestoSprite(basePath) {
+  if (window.location.protocol !== 'file:') {
+    return fetch(basePath + 'manifest.json?v=20261124_02').then(response => {
+      if (!response.ok) throw new Error('Manifest ' + response.status);
+      return response.json();
+    });
+  }
+
+  // Un script clásico local puede cargar los metadatos sin hacer fetch desde file://.
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = basePath + 'manifest.js?v=20261124_02';
+    script.onload = () => resolve(window.ATS_LOCAL_SPRITE_MANIFEST);
+    script.onerror = () => reject(new Error('Manifest local'));
+    document.head.appendChild(script);
+  });
+}
+
 function initSpritePilot() {
   const pilot = window.SPRITE_PILOT;
-  if (typeof fetch !== 'function') { pilot.enabled = false; return; }
-  fetch(pilot.basePath + 'manifest.json?v=20261117_01')
-    .then(r => { if (!r.ok) throw new Error('manifest ' + r.status); return r.json(); })
+  cargarManifiestoSprite(pilot.basePath)
     .then(manifest => {
       if (!manifest || manifest.schema !== pilot.schema) throw new Error('schema mismatch');
       const assets = { ...(manifest.assets || {}) };
@@ -757,6 +862,12 @@ function initSpritePilot() {
           };
         });
       });
+      if (usaArteActualizadoSprite()) {
+        const previewAssets = manifest.preview?.assets || {};
+        for (const asset of Object.values(assets)) {
+          Object.assign(asset, previewAssets[asset.file]);
+        }
+      }
       pilot.manifest = { ...manifest, assets };
       const baseKeys = ['crew_m0', 'vehicle_v0'].filter(key => assets[key]);
       if (baseKeys.length === 0) { pilot.enabled = false; return; }
@@ -812,22 +923,13 @@ function spritePilotAtlasLoaded(atlasKey) {
   return !!(pilot && pilot.enabled && pilot.manifest && pilot.atlases[atlasKey] && pilot.atlases[atlasKey].loaded);
 }
 
-let _spritePilotPreviewActive = null;
-function isSpritePilotPreviewActive() {
-  if (_spritePilotPreviewActive === null) {
-    try {
-      _spritePilotPreviewActive = typeof URLSearchParams === 'function' &&
-        new URLSearchParams(window.location.search).get('spritePilotPreview') === '1';
-    } catch (e) {
-      _spritePilotPreviewActive = (window.location.search || '').indexOf('spritePilotPreview=1') !== -1;
-    }
-  }
-  return _spritePilotPreviewActive;
+function usaArteActualizadoSprite() {
+  return new URLSearchParams(window.location.search).get('spritePilotPreview') !== '0';
 }
 
 function crewSpriteAtlasKey(crew) {
   if (!crew || !window.SPRITE_PILOT || !window.SPRITE_PILOT.enabled) return null;
-  const variantKey = `crew_m${getCrewModel(crew).index}`;
+  const variantKey = `crew_m${indiceVarianteSprite(crew.spriteVariantIndex) ?? getCrewModel(crew).index}`;
   if (spritePilotAtlasLoaded(variantKey)) return variantKey;
   if (window.SPRITE_PILOT.manifest.assets[variantKey]) requestSpritePilotAtlas(variantKey);
   return spritePilotAtlasLoaded('crew_m0') ? 'crew_m0' : null;
@@ -835,7 +937,7 @@ function crewSpriteAtlasKey(crew) {
 
 function vehicleSpriteAtlasKey(veh) {
   if (!veh || !window.SPRITE_PILOT || !window.SPRITE_PILOT.enabled) return null;
-  const variantKey = `vehicle_v${getVehicleModel(veh).index}`;
+  const variantKey = `vehicle_v${indiceVarianteSprite(veh.spriteVariantIndex) ?? getVehicleModel(veh).index}`;
   if (spritePilotAtlasLoaded(variantKey)) return variantKey;
   if (window.SPRITE_PILOT.manifest.assets[variantKey]) requestSpritePilotAtlas(variantKey);
   return spritePilotAtlasLoaded('vehicle_v0') ? 'vehicle_v0' : null;
@@ -882,6 +984,8 @@ function renderCrewSparkOverlay(crew) {
 }
 
 function renderCrewRoleAccessory(crew, modelIndex) {
+  const atlasKey = crewSpriteAtlasKey(crew);
+  if (window.SPRITE_PILOT.atlases[atlasKey]?.asset.bakedAccessories) return '';
   const index = Math.abs(modelIndex % 10);
   if (index === 0) return '';
   const profile = getCrewVisualProfile(index);
@@ -975,6 +1079,8 @@ function renderVehicleSpritePilot(veh) {
 }
 
 function renderVehicleRoleAccessory(veh, modelIndex) {
+  const atlasKey = vehicleSpriteAtlasKey(veh);
+  if (window.SPRITE_PILOT.atlases[atlasKey]?.asset.bakedAccessories) return '';
   const index = Math.abs(modelIndex % 10);
   if (index === 0) return '';
   let accessory = '';

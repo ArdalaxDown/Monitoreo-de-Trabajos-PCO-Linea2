@@ -204,10 +204,56 @@ function initPanZoomControls() {
 // ------------------------------------------------------------------------------
 // 12. RENDERIZADO VISUAL CON SPRITES RICOS DE VIDEOJUEGO
 // ------------------------------------------------------------------------------
+let vpSelectionId = null;
+
+function seleccionarTrabajoVP(id) {
+  vpSelectionId = id;
+  renderContextoVP();
+}
+
+function renderContextoVP() {
+  const panel = document.getElementById('vp-context');
+  const token = appState.crews.find(crew => crew.id === vpSelectionId)
+    || appState.vehicles.find(vehicle => vehicle.id === vpSelectionId);
+  if (!token) vpSelectionId = null;
+  panel.dataset.selection = vpSelectionId || '';
+  const status = document.getElementById('vp-context-status');
+  const route = document.getElementById('vp-context-route');
+  const onTrack = appState.crews.filter(crew => !crew.inSafeZone).length;
+  const isVehicle = token?.type === 'vehicle';
+  document.getElementById('vp-context-title').textContent =
+    token ? (isVehicle ? token.vehicleType : token.responsible) : 'Vía principal';
+  route.hidden = !token;
+  route.textContent = token ? `${token.via} · ${token.zoneLabel || 'Tramo sin nombre'}` : '';
+  status.dataset.status = token ? (isVehicle ? 'vehicle' : token.inSafeZone ? 'safe' : 'crew') : '';
+  status.textContent = token
+    ? (isVehicle ? 'Vehículo en maniobra' : token.inSafeZone ? 'Cuadrilla en zona segura' : 'Cuadrilla en vía')
+    : `${onTrack} cuadrillas en vía · ${appState.crews.length - onTrack} en zona segura · ${appState.vehicles.length} vehículos`;
+  document.getElementById('vp-context-clear').hidden = !token;
+
+  document.querySelectorAll('#work-span-layer [data-work-id]').forEach(span => {
+    span.classList.toggle('vp-span-selected', span.dataset.workId === vpSelectionId);
+  });
+  document.querySelector('.vp-token-selected')?.classList.remove('vp-token-selected');
+  document.querySelector('.vp-selection-ring')?.remove();
+  if (!token) return;
+  const graphic = document.getElementById(`token-${token.id}`);
+  if (!graphic) return;
+  graphic.classList.add('vp-token-selected');
+  const ring = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+  ring.setAttribute('class', 'vp-selection-ring');
+  ring.setAttribute('cy', '13');
+  ring.setAttribute('rx', isVehicle ? '61' : '34');
+  ring.setAttribute('ry', isVehicle ? '13' : '10');
+  graphic.prepend(ring);
+}
+
 function renderAll() {
+  actualizarVariantesSprite();
   renderWorkSpans();
   renderCatenaryLayer();
   renderEntitiesDOM();
+  renderContextoVP();
   updateCounters();
   renderTable();
 }
@@ -232,6 +278,7 @@ function renderWorkSpans() {
         e.stopPropagation();
         showTokenContextMenu(crew, e.clientX, e.clientY);
       });
+      path.dataset.workId = crew.id;
       layer.appendChild(path);
       return;
     }
@@ -250,6 +297,7 @@ function renderWorkSpans() {
         e.stopPropagation();
         showTokenContextMenu(crew, e.clientX, e.clientY);
       });
+      path.dataset.workId = crew.id;
       layer.appendChild(path);
       return;
     }
@@ -270,6 +318,7 @@ function renderWorkSpans() {
       e.stopPropagation();
       showTokenContextMenu(crew, e.clientX, e.clientY);
     });
+    rect.dataset.workId = crew.id;
     layer.appendChild(rect);
   });
   
@@ -289,6 +338,7 @@ function renderWorkSpans() {
         e.stopPropagation();
         showTokenContextMenu(veh, e.clientX, e.clientY);
       });
+      path.dataset.workId = veh.id;
       layer.appendChild(path);
       return;
     }
@@ -307,6 +357,7 @@ function renderWorkSpans() {
         e.stopPropagation();
         showTokenContextMenu(veh, e.clientX, e.clientY);
       });
+      path.dataset.workId = veh.id;
       layer.appendChild(path);
       return;
     }
@@ -327,6 +378,7 @@ function renderWorkSpans() {
       e.stopPropagation();
       showTokenContextMenu(veh, e.clientX, e.clientY);
     });
+    rect.dataset.workId = veh.id;
     layer.appendChild(rect);
   });
 }
@@ -494,6 +546,7 @@ function renderEntitiesDOM() {
     g.addEventListener("click", (e) => {
       e.stopPropagation();
       if (crewMoved) return;
+      seleccionarTrabajoVP(crew.id);
       playSound("coin");
     });
     
@@ -649,6 +702,7 @@ function renderEntitiesDOM() {
     g.addEventListener("click", (e) => {
       e.stopPropagation();
       if (vehMoved) return;
+      seleccionarTrabajoVP(veh.id);
       playSound("horn");
       showToast(`🚜 ¡Honk-Honk! Bocina de ${veh.vehicleType} activada.`, "info");
     });

@@ -783,6 +783,7 @@ function initQuickEditCard() {
 }
 
 function openQuickEditForToken(token, clientX, clientY) {
+  seleccionarTrabajoVP(token.id);
   appState.selectedTokenForQuickEdit = token;
   appState.editarGrupoIds = null;
   const card = document.getElementById('token-quickcard');
